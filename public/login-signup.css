@@ -97,7 +97,7 @@ body {
 }
 
 .inp ~ span {
-    color: black;
+    color: #ffffff80;
 }
 
 .inp:focus ~ span {

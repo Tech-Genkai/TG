@@ -73,12 +73,36 @@ function setLoginStatus(status) {
     localStorage.setItem('isLoggedIn', status);
 }
 
+// Function to update profile picture
+async function updateProfilePicture() {
+    const username = localStorage.getItem('username');
+    if (!username) return;
+
+    try {
+        const response = await fetch(`/api/profile?username=${username}`);
+        if (!response.ok) throw new Error('Failed to fetch profile data');
+        
+        const data = await response.json();
+        const profileLink = document.querySelector('a[href="/profile"]');
+        if (profileLink) {
+            const img = profileLink.querySelector('img');
+            if (img) {
+                img.src = data.profilePic;
+                img.alt = data.displayName;
+            }
+        }
+    } catch (error) {
+        console.error('Error updating profile picture:', error);
+    }
+}
+
 // Run on page load
 window.onload = function() {
     // First check authentication before doing anything else
     if (checkLoginStatus()) {
         showSuccessModal();
         updateProfileName();
+        updateProfilePicture();
     }
 };
 

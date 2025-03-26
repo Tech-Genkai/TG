@@ -20,9 +20,21 @@ const LoginSchema = new mongoose.Schema({
     password:{
         type:String,
         required:true
+    },
+    displayName: {
+        type: String
+    },
+    gender: {
+        type: String,
+        enum: ['male', 'female', 'other']
+    },
+    dateOfBirth: {
+        type: Date
+    },
+    profilePic: {
+        type: String
     }
 })
-
 
 const collection = new mongoose.model("collection1",LoginSchema)
 
