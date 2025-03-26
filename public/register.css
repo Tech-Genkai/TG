@@ -21,3 +21,17 @@ body {
     background-size: cover;
     background-position: center;
 }
+
+.wrapper {
+    position: fixed;
+    top: 75px;
+    left: 195px;
+    height: calc(100vh - 70px);
+    width: 100%;
+    background: #ffffff50;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    z-index: 0;
+}
