@@ -90,6 +90,11 @@ async function updateProfilePicture() {
                 img.src = data.profilePic;
                 img.alt = data.displayName;
             }
+            // Update the text content after the image
+            const textNode = profileLink.childNodes[1];
+            if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+                textNode.textContent = data.displayName;
+            }
         }
     } catch (error) {
         console.error('Error updating profile picture:', error);
