@@ -37,7 +37,8 @@ body {
 }
 
 .search {
-    align-items: center;
+    align-items: center;    
+    transition: all 0.3s ease-out;
     width: 450px;
 }
 
@@ -173,6 +174,8 @@ body {
 /* Responsive adjustment */
 @media (max-width: 810px) {
     .Org-logo{
+        left: 20px;
+        transform: translateX(-20%);
         font-size: 0;
     }
 
@@ -181,6 +184,21 @@ body {
         align-items: center;
         padding: 10px;
     }
+
+    .search {
+        align-items: center;
+        transition: all 0.3s ease-out;
+        width: 200px;
+    }
+
+    .nav-icons {
+        display: flex;
+        gap: 18px;
+        margin-right: 30px;
+        transition: all 0.3s ease-out;
+        cursor: pointer; 
+    }
+
     
     .sidebar h2 {
         font-size: 0;
@@ -199,6 +217,7 @@ body {
     .sidebar a img {
         width: 30px;
         height: 30px;
+        transition: all 0.3s ease-out;
     }
 }
 
