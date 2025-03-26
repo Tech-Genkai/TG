@@ -182,12 +182,13 @@ app.get("/logout", (req, res) => {
     `);
 });
 
-// Add endpoint to get user profile data
-app.get("/api/profile", async(req, res) => {
+// Update endpoint to get user profile data
+app.get("/api/user/profile", async(req, res) => {
     try {
-        const username = req.query.username;
+        // Get username from localStorage (sent in request headers)
+        const username = req.headers['x-username'];
         if (!username) {
-            return res.status(400).json({ error: "Username is required" });
+            return res.status(401).json({ error: "User not authenticated" });
         }
 
         const user = await collection.findOne({ username });
@@ -195,13 +196,50 @@ app.get("/api/profile", async(req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
+        // Return all profile data
         res.json({
-            displayName: user.displayName || username,
-            profilePic: user.profilePic || '/images/default-avatar.png'
+            username: user.username,
+            displayName: user.displayName || user.username,
+            profilePic: user.profilePic || '/images/default-profile.png',
+            gender: user.gender || 'Not specified',
+            dob: user.dateOfBirth || 'Not specified'
         });
     } catch (error) {
         console.error('Error fetching profile:', error);
         res.status(500).json({ error: "Error fetching profile data" });
+    }
+});
+
+// Add endpoint to update profile data
+app.post("/api/user/profile/update", upload.single('profilePic'), async(req, res) => {
+    try {
+        const username = req.headers['x-username'];
+        if (!username) {
+            return res.status(401).json({ error: "User not authenticated" });
+        }
+
+        const updateData = {};
+        
+        // Only include fields that were provided
+        if (req.body.displayName) updateData.displayName = req.body.displayName;
+        if (req.body.gender) updateData.gender = req.body.gender;
+        if (req.body.dateOfBirth) updateData.dateOfBirth = req.body.dateOfBirth;
+        
+        // Handle profile picture upload
+        if (req.file) {
+            updateData.profilePic = '/uploads/' + req.file.filename;
+        }
+
+        // Update the user's profile in the database
+        await collection.updateOne(
+            { username },
+            { $set: updateData }
+        );
+
+        res.json({ success: true, message: "Profile updated successfully" });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ error: "Error updating profile data" });
     }
 });
 

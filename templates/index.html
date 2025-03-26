@@ -21,7 +21,7 @@
         <div class="nav-icons">
             <a href="#"><img src="./images/message-icon.png" alt="Messages"></a>
             <a href="#"><img src="./images/bell-icon.png" alt="Notifications"></a>
-            <a href="#"><img src="./images/profile-icon.png" alt="Profile"></a>
+            <a href="/profile"><img src="./images/default-profile.png" alt="Profile" id="navProfilePic"></a>
         </div>
     </nav>
     <div class="sidebar">
@@ -29,7 +29,7 @@
             <a href="/"><img src="./images/home-icon.svg" alt="Home">Home</a>
             <a href="#"><img src="./images/message-icon.png" alt="Messages">Messages</a>
             <a href="#"><img src="./images/bell-icon.png" alt="Notifications">Notifications</a>
-            <a href="/profile"><img src="./images/profile-icon.png" alt="Profile">Profile</a>
+            <a href="/profile"><img src="./images/default-profile.png" alt="Profile" id="sidebarProfilePic"></a>
             <a href="/logout"><img src="./images/profile-icon.png" alt="Log Out">Log Out</a>
     </div>
     
@@ -46,6 +46,51 @@
     <script>
         // Check if user just logged in
         document.addEventListener('DOMContentLoaded', function() {
+            const username = localStorage.getItem('username');
+            if (!username) {
+                window.location.href = '/login';
+                return;
+            }
+
+            // Fetch user profile data
+            fetch('/api/user/profile', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-username': username
+                },
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Update profile pictures
+                document.getElementById('navProfilePic').src = data.profilePic || './images/default-profile.png';
+                document.getElementById('sidebarProfilePic').src = data.profilePic || './images/default-profile.png';
+                
+                // Update sidebar profile link with username
+                const profileLinks = document.querySelectorAll('.sidebar a');
+                profileLinks.forEach(link => {
+                    if (link.href.includes('/profile')) {
+                        const img = link.querySelector('img');
+                        link.innerHTML = '';
+                        link.appendChild(img);
+                        link.appendChild(document.createTextNode(data.username));
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading profile:', error);
+            });
+
             if (sessionStorage.getItem('justLoggedIn') === 'true') {
                 // Show welcome notification
                 notifications.success("Welcome Back!", "Welcome back to your account.");
