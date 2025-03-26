@@ -49,6 +49,8 @@ body {
 
 .Org-logo{
     color: white;
+    display: flex;
+    gap: 4px;
 }
 
 .Org-logo img{
@@ -170,6 +172,10 @@ body {
 
 /* Responsive adjustment */
 @media (max-width: 768px) {
+    .Org-logo{
+        font-size: 0;
+    }
+
     .sidebar {
         width: 30px;
         align-items: center;
