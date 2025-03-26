@@ -25,12 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         
         const displayName = document.getElementById('display-name').value;
+        const gender = document.getElementById('gender').value;
         const dateOfBirth = document.getElementById('date-of-birth').value;
         const profilePic = profilePicture.files[0];
 
         // Here you would typically send this data to your server
         console.log({
             displayName,
+            gender,
             dateOfBirth,
             profilePic
         });
