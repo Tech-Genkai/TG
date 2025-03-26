@@ -15,14 +15,18 @@ mongoose.connect(DB_URI)
 const LoginSchema = new mongoose.Schema({
     username:{
         type:String,
-        required:true
+        required:true,
+        unique: true,
+        maxlength: 15
     },
     password:{
         type:String,
-        required:true
+        required:true,
+        minlength: 8
     },
     displayName: {
-        type: String
+        type: String,
+        maxlength: 15
     },
     gender: {
         type: String,

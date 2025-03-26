@@ -3,6 +3,8 @@
 
 <head>
     <link rel="stylesheet" href="register.css">
+    <link rel="stylesheet" href="css/notifications.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <title>TG - Register</title>
 </head>
 
@@ -19,9 +21,9 @@
         </div>
         <div class="details-section">
             <h2 class="form-title">Create Account</h2>
-            <form id="register-form">
+            <form id="register-form" novalidate>
                 <div class="field">
-                    <input type="text" class="inp" id="display-name" placeholder=" ">
+                    <input type="text" class="inp" id="display-name" placeholder=" " maxlength="15">
                     <label class="label" for="display-name">Display Name</label>
                     <span>👤</span>
                 </div>
@@ -36,7 +38,7 @@
                     <span>⚧</span>
                 </div>
                 <div class="field">
-                    <input type="date" class="inp" id="date-of-birth" placeholder=" ">
+                    <input type="date" class="inp" id="date-of-birth" placeholder=" " max="">
                     <label class="label" for="date-of-birth">Date of Birth</label>
                     <span class="calendar-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -52,7 +54,8 @@
         </div>
     </div>
 
-    <script src="js/register.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/register.js" defer></script>
 </body>
 
 </html>

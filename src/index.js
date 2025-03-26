@@ -3,6 +3,7 @@ const app = express()
 const path = require('path')
 const collection = require("./mongodb")
 const multer = require('multer')
+const crypto = require('crypto')
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -10,7 +11,12 @@ const storage = multer.diskStorage({
         cb(null, path.join(__dirname, '../public/uploads/'))
     },
     filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname)
+        // Generate random filename
+        const randomString = crypto.randomBytes(16).toString('hex');
+        const timestamp = Date.now();
+        const extension = path.extname(file.originalname);
+        const filename = `${timestamp}-${randomString}${extension}`;
+        cb(null, filename);
     }
 })
 
@@ -55,7 +61,24 @@ app.get("/register", (req, res) => {
     res.sendFile(path.join(templatePath, "register.html"))
 })
 
-// Update signup endpoint to include login script and store username
+// Add endpoint to check username availability
+app.post("/check-username", async(req, res) => {
+    try {
+        const username = req.body.username;
+        if (!username) {
+            return res.status(400).json({ error: "Username is required" });
+        }
+
+        // Check if username exists
+        const existingUser = await collection.findOne({ username });
+        res.json({ exists: !!existingUser });
+    } catch (error) {
+        console.error('Error checking username:', error);
+        res.status(500).json({ error: "Error checking username availability" });
+    }
+});
+
+// Update signup endpoint to include validation
 app.post("/signup", async(req, res) => {
     const data = {
         username: req.body.username,
@@ -63,6 +86,22 @@ app.post("/signup", async(req, res) => {
     }
 
     try {
+        // Validate username length
+        if (data.username.length > 15) {
+            return res.status(400).send("Username must be 15 characters or less");
+        }
+
+        // Validate password length
+        if (data.password.length < 8) {
+            return res.status(400).send("Password must be at least 8 characters long");
+        }
+
+        // Check if username already exists
+        const existingUser = await collection.findOne({ username: data.username });
+        if (existingUser) {
+            return res.status(400).send("Username is already taken");
+        }
+
         await collection.insertMany([data])
         // Send HTML with script to set login status
         res.send(`
@@ -71,8 +110,6 @@ app.post("/signup", async(req, res) => {
                 localStorage.setItem('isLoggedIn', 'true');
                 // Store username
                 localStorage.setItem('username', '${req.body.username}');
-                // Set flag that user just logged in (for showing modal)
-                sessionStorage.setItem('justLoggedIn', 'true');
                 // Redirect to register page
                 window.location.href = '/register';
             </script>
@@ -85,30 +122,43 @@ app.post("/signup", async(req, res) => {
 // Update login endpoint to include login script and store username
 app.post("/login", async(req, res) => {
     try {
-        const user = await collection.findOne({
-            username: req.body.username,
-            password: req.body.password
-        })
+        // First check if username exists
+        const user = await collection.findOne({ username: req.body.username });
         
-        if (user) {
-            // Send HTML with script to set login status
-            res.send(`
-                <script>
-                    // Set login status to true
-                    localStorage.setItem('isLoggedIn', 'true');
-                    // Store username
-                    localStorage.setItem('username', '${user.username}');
-                    // Set flag that user just logged in (for showing modal)
-                    sessionStorage.setItem('justLoggedIn', 'true');
-                    // Redirect to root URL (dashboard)
-                    window.location.href = '/';
-                </script>
-            `);
-        } else {
-            res.send("Invalid username or password");
+        if (!user) {
+            return res.status(401).json({ 
+                error: "Invalid Username",
+                message: "Username does not exist"
+            });
         }
+
+        // Then check if password matches
+        if (user.password !== req.body.password) {
+            return res.status(401).json({ 
+                error: "Invalid Password",
+                message: "Incorrect password"
+            });
+        }
+
+        // If both checks pass, send success response with redirect script
+        res.json({
+            success: true,
+            script: `
+                // Set login status to true
+                localStorage.setItem('isLoggedIn', 'true');
+                // Store username
+                localStorage.setItem('username', '${user.username}');
+                // Set flag that user just logged in (for showing modal)
+                sessionStorage.setItem('justLoggedIn', 'true');
+                // Redirect to root URL (dashboard)
+                window.location.href = '/';
+            `
+        });
     } catch (error) {
-        res.status(500).send("Error during login: " + error.message)
+        res.status(500).json({ 
+            error: "Login Error",
+            message: "An error occurred during login. Please try again."
+        });
     }
 });
 
