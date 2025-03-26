@@ -33,6 +33,11 @@ app.get("/signup", (req, res) => {
     res.sendFile(path.join(templatePath, "signup.html"))
 })
 
+// Add a route for /register that serves the register page
+app.get("/register", (req, res) => {
+    res.sendFile(path.join(templatePath, "register.html"))
+})
+
 // Update signup endpoint to include login script and store username
 app.post("/signup", async(req, res) => {
     const data = {
@@ -51,8 +56,8 @@ app.post("/signup", async(req, res) => {
                 localStorage.setItem('username', '${req.body.username}');
                 // Set flag that user just logged in (for showing modal)
                 sessionStorage.setItem('justLoggedIn', 'true');
-                // Redirect to root URL (dashboard)
-                window.location.href = '/';
+                // Redirect to register page
+                window.location.href = '/register';
             </script>
         `);
     } catch (error) {
