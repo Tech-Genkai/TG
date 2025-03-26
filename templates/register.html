@@ -10,7 +10,29 @@
     <div class="bg"></div>
 
     <div class="wrapper">
-        
+        <div class="profile-section">
+            <div class="profile-picture-container">
+                <img id="profile-preview" src="./images/default-avatar.png" alt="Profile Picture">
+                <input type="file" id="profile-picture" accept="image/*" hidden>
+                <button class="upload-btn">Choose Picture</button>
+            </div>
+        </div>
+        <div class="details-section">
+            <h2 class="form-title">Create Account</h2>
+            <form id="register-form">
+                <div class="field">
+                    <input type="text" class="inp" id="display-name" placeholder=" ">
+                    <label class="label" for="display-name">Display Name</label>
+                    <span>👤</span>
+                </div>
+                <div class="field">
+                    <input type="date" class="inp" id="date-of-birth" placeholder=" ">
+                    <label class="label" for="date-of-birth">Date of Birth</label>
+                    <span>📅</span>
+                </div>
+                <button type="submit" class="submit-btn">Register</button>
+            </form>
+        </div>
     </div>
 
     <script src="js/register.js"></script>
