@@ -1,7 +1,7 @@
 const mongoose = require("mongoose")
 
 // Use either local MongoDB or MongoDB Atlas
-const DB_URI = process.env.MONGODB_URI || "mongodb+srv://ayanwastaken0:KH2N0kwKkShAvInN@tg.splbxyp.mongodb.net/?retryWrites=true&w=majority&appName=TG"
+const DB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/registration"
 
 mongoose.connect(DB_URI)
 .then(()=>{
@@ -11,7 +11,6 @@ mongoose.connect(DB_URI)
     console.log("Failed to connect to MongoDB");
     console.error(err);
 })
-
 
 const LoginSchema = new mongoose.Schema({
     username:{
