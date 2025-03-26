@@ -42,31 +42,7 @@ function updateProfileName() {
     }
 }
 
-// Show success modal only if user is newly logged in
-function showSuccessModal() {
-    const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true';
-    
-    if (justLoggedIn && document.getElementById('successModal')) {
-        // Display the modal
-        document.getElementById('successModal').style.display = 'flex';
-        
-        // Clear the flag so modal won't show on refresh
-        sessionStorage.removeItem('justLoggedIn');
-        
-        // Automatically close after 3 seconds
-        setTimeout(function() {
-            closeModal();
-        }, 3000);
-    }
-}
-
-// Close modal function
-function closeModal() {
-    const modal = document.getElementById('successModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
+/
 
 // Set login status (call this after successful login)
 function setLoginStatus(status) {

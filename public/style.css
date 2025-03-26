@@ -332,3 +332,11 @@ body {
     transition: all 0.3s ease-out;
     border-radius: 5px;
 }
+
+/* Add circular styling for navbar profile picture */
+#navProfilePic {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+}
