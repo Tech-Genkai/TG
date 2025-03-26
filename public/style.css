@@ -171,6 +171,38 @@ body {
     color: var(--dragon);
 }
 
+.feed {
+    position: fixed;
+    top: 70px;
+    left: 197px;
+    height: calc(100vh - 70px);
+    width: 150vh;
+    background: #ffffff50;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    z-index: 0;
+    border-radius: 5px;
+}
+
+.trend {
+    position: fixed;
+    right: 0;
+    top: 70px; /* Adjust based on navbar height */
+    width: 210px;
+    height: calc(100vh - 75px); /* Full height minus navbar */
+    background: #1a1a1a50; /* Dark background matching theme */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 1;
+    color: #fff;
+    transition: all 0.3s ease-out;
+    border-radius: 5px;
+}
+
 /* Responsive adjustment */
 @media (max-width: 810px) {
     .Org-logo{
@@ -199,7 +231,14 @@ body {
         cursor: pointer; 
     }
 
-    
+    .trend {
+        display: none;
+    }
+
+    .feed {
+        left: 51px;
+    }
+
     .sidebar h2 {
         font-size: 0;
     }
@@ -207,7 +246,8 @@ body {
     .sidebar a {
         justify-content: center;
         padding: 8px;
-        font-size: 0;
+        font-size: 0;        
+        width: 30px;
     }
     
     .sidebar a span{
@@ -218,6 +258,7 @@ body {
         width: 30px;
         height: 30px;
         transition: all 0.3s ease-out;
+        padding-left: 10px;
     }
 }
 
@@ -320,34 +361,3 @@ body {
     }
 }
 
-.feed {
-    position: fixed;
-    top: 70px;
-    left: 195px;
-    height: calc(100vh - 70px);
-    width: 150vh;
-    background: #ffffff50;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 20px;
-    z-index: 0;
-    border-radius: 5px;
-}
-
-.trend {
-    position: fixed;
-    right: 0;
-    top: 70px; /* Adjust based on navbar height */
-    width: 210px;
-    height: calc(100vh - 75px); /* Full height minus navbar */
-    background: #1a1a1a50; /* Dark background matching theme */
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    z-index: 1;
-    color: #fff;
-    transition: all 0.3s ease-out;
-    border-radius: 5px;
-}
