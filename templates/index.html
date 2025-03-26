@@ -3,20 +3,12 @@
 
 <head>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
     <title>TG - Home</title>
 </head>
 
 <body>
     <div class="bg"></div>
-    
-    <div id="successModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
-            <div class="success-icon">✓</div>
-            <h2>Welcome Back!</h2>
-            <p>Welcome back to your account.</p>
-        </div>
-    </div>
     
     <nav class="navbar">
         <div class="Org-logo">
@@ -49,7 +41,19 @@
         
     </div>
 
-    <script src="js/main.js"></script>
+    <script src="/js/notifications.js"></script>
+    <script src="/js/main.js"></script>
+    <script>
+        // Check if user just logged in
+        document.addEventListener('DOMContentLoaded', function() {
+            if (sessionStorage.getItem('justLoggedIn') === 'true') {
+                // Show welcome notification
+                notifications.success("Welcome Back!", "Welcome back to your account.");
+                // Clear the flag
+                sessionStorage.removeItem('justLoggedIn');
+            }
+        });
+    </script>
 </body>
 
 </html>

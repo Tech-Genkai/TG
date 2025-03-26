@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Login page loaded');
+    console.log('Notifications system available:', typeof notifications !== 'undefined');
     const loginForm = document.querySelector('form');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
@@ -43,6 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Login failed:', data.error);
                 // Show error notification
                 if (typeof notifications !== 'undefined') {
+                    console.log('Showing error notification');
                     notifications.error(data.error, data.message);
                 } else {
                     console.error('Notifications system not initialized!');
@@ -63,6 +65,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } else if (data.success) {
                 console.log('Login successful, executing redirect script');
+                // Show welcome notification
+                if (typeof notifications !== 'undefined') {
+                    console.log('Showing welcome notification');
+                    notifications.success("Welcome Back!", "Welcome back to your account.");
+                } else {
+                    console.error('Notifications system not initialized!');
+                }
                 // Execute the redirect script on success
                 eval(data.script);
             } else {

@@ -110,8 +110,6 @@ app.post("/signup", async(req, res) => {
                 localStorage.setItem('isLoggedIn', 'true');
                 // Store username
                 localStorage.setItem('username', '${req.body.username}');
-                // Set flag that user just logged in (for showing modal)
-                sessionStorage.setItem('justLoggedIn', 'true');
                 // Redirect to register page
                 window.location.href = '/register';
             </script>
