@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Wait for notifications to be available
+    if (typeof notifications === 'undefined') {
+        console.error('Notifications system not loaded');
+        return;
+    }
+
     const profilePicture = document.getElementById('profile-picture');
     const profilePreview = document.getElementById('profile-preview');
     const uploadBtn = document.querySelector('.upload-btn');
@@ -31,11 +37,96 @@ document.addEventListener('DOMContentLoaded', () => {
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const displayName = document.getElementById('display-name').value;
+        const displayName = document.getElementById('display-name').value.trim();
         const gender = document.getElementById('gender').value;
         const dateOfBirth = document.getElementById('date-of-birth').value;
         const profilePic = profilePicture.files[0];
         const username = localStorage.getItem('username'); // Get the logged-in username
+
+        let hasError = false;
+        let errors = [];
+
+        // Validate required fields
+        if (!displayName) {
+            errors.push({
+                title: 'Required Field',
+                message: 'Display name is required'
+            });
+            hasError = true;
+        }
+
+        if (!gender) {
+            errors.push({
+                title: 'Required Field',
+                message: 'Please select your gender'
+            });
+            hasError = true;
+        }
+
+        if (!dateOfBirth) {
+            errors.push({
+                title: 'Required Field',
+                message: 'Date of birth is required'
+            });
+            hasError = true;
+        }
+
+        // Validate display name length
+        if (displayName && displayName.length > 15) {
+            errors.push({
+                title: 'Invalid Display Name',
+                message: 'Display name must be 15 characters or less'
+            });
+            hasError = true;
+        }
+
+        // Validate date format and age
+        if (dateOfBirth) {
+            const birthDate = new Date(dateOfBirth);
+            const today = new Date();
+
+            // Check if the date is valid
+            if (isNaN(birthDate.getTime())) {
+                errors.push({
+                    title: 'Invalid Date',
+                    message: 'Please enter a valid date of birth'
+                });
+                hasError = true;
+            } else {
+                // Check if the date is in the future
+                if (birthDate > today) {
+                    errors.push({
+                        title: 'Invalid Date',
+                        message: 'Date of birth cannot be in the future'
+                    });
+                    hasError = true;
+                } else {
+                    // Calculate age
+                    let age = today.getFullYear() - birthDate.getFullYear();
+                    const monthDiff = today.getMonth() - birthDate.getMonth();
+                    
+                    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                        age--;
+                    }
+                    
+                    if (age < 13) {
+                        errors.push({
+                            title: 'Age Restriction',
+                            message: 'You must be at least 13 years old to register'
+                        });
+                        hasError = true;
+                    }
+                }
+            }
+        }
+
+        // Show all errors
+        if (hasError) {
+            errors.forEach(error => {
+                notifications.error(error.title, error.message);
+            });
+            return;
+        }
 
         // Create form data
         const formData = new FormData();
@@ -63,7 +154,10 @@ document.addEventListener('DOMContentLoaded', () => {
             eval(scriptContent);
         } catch (error) {
             console.error('Error:', error);
-            alert('Registration failed. Please try again.');
+            notifications.error(
+                'Registration Failed',
+                'An error occurred during registration. Please try again.'
+            );
         }
     });
 });

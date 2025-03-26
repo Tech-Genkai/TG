@@ -41,4 +41,63 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Add form validation for signup
+    const signupForm = document.querySelector('form[action="/signup"]');
+    if (signupForm) {
+        signupForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Validate username length
+            if (username.length > 15) {
+                notifications.error(
+                    'Invalid Username',
+                    'Username must be 15 characters or less'
+                );
+                return;
+            }
+            
+            // Validate password length
+            if (password.length < 8) {
+                notifications.error(
+                    'Invalid Password',
+                    'Password must be at least 8 characters long'
+                );
+                return;
+            }
+            
+            // Check if username is already taken
+            try {
+                const response = await fetch('/check-username', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username })
+                });
+                
+                const data = await response.json();
+                
+                if (data.exists) {
+                    notifications.error(
+                        'Username Taken',
+                        'This username is already taken. Please choose another one.'
+                    );
+                    return;
+                }
+                
+                // If validation passes, submit the form
+                this.submit();
+            } catch (error) {
+                console.error('Error checking username:', error);
+                notifications.error(
+                    'Error',
+                    'An error occurred. Please try again.'
+                );
+            }
+        });
+    }
 }); 

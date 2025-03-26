@@ -171,7 +171,7 @@ body {
 }
 
 /* Responsive adjustment */
-@media (max-width: 768px) {
+@media (max-width: 810px) {
     .Org-logo{
         font-size: 0;
     }
