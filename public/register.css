@@ -95,6 +95,8 @@ body {
     position: relative;
     margin-bottom: 25px;
     width: 90%;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .inp {
@@ -107,6 +109,7 @@ body {
     font-size: 16px;
     outline: none;
     transition: all 0.3s ease-out;
+    box-sizing: border-box;
 }
 
 .inp:focus {
@@ -120,21 +123,37 @@ input[type="date"] {
     appearance: none;
     -webkit-appearance: none;
     color-scheme: dark;
+    position: relative;
+    z-index: 1;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
-    background-color: transparent;
-    cursor: pointer;
-    padding: 5px;
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    filter: invert(1);
+    display: none;
 }
 
-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-    filter: invert(1) brightness(1.5);
+.calendar-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ffffff80;
+    cursor: pointer;
+    transition: color 0.3s ease-out;
+    z-index: 10;
+    pointer-events: auto !important;
+}
+
+.calendar-icon:hover {
+    color: var(--dragon);
+}
+
+.calendar-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.inp:focus ~ .calendar-icon {
+    color: var(--dragon);
 }
 
 /* Select input specific styles */
@@ -147,12 +166,15 @@ select.inp {
     background-position: right 15px center;
     background-size: 15px;
     padding-right: 40px;
+    box-sizing: border-box;
 }
 
 select.inp option {
     background: #333333;
     color: white;
     padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .label {

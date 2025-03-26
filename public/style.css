@@ -144,6 +144,15 @@ body {
     transition: transform 0.3s ease-out, filter 0.3s ease-out;
 }
 
+/* Make profile picture circular */
+.sidebar a[href="/profile"] img {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #ffffff80;
+}
+
 .sidebar a:hover {
     background: #33333380;
     box-shadow: 0 0 5px var(--dragon);
