@@ -31,19 +31,24 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
+    padding: 5px 20px;
     z-index: 1;
+    border-radius: 5px;
 }
 
 .search {
     align-items: center;
-    width: 500px;
+    width: 450px;
 }
 
 .search-bar {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.Org-logo{
+    color: white;
 }
 
 .Org-logo img{
@@ -68,7 +73,7 @@ body {
 
 .nav-icons {
     display: flex;
-    gap: 20px;
+    gap: 30px;
     margin-right: 30px;
     cursor: pointer; 
 }
@@ -98,9 +103,9 @@ body {
 .sidebar {
     position: fixed;
     left: 0;
-    top: 73px; /* Adjust based on navbar height */
+    top: 70px; /* Adjust based on navbar height */
     width: 150px;
-    height: calc(100vh - 70px); /* Full height minus navbar */
+    height: calc(100vh - 75px); /* Full height minus navbar */
     background: #1a1a1a50; /* Dark background matching theme */
     padding: 20px;
     display: flex;
@@ -109,6 +114,7 @@ body {
     z-index: 1;
     color: #fff;
     transition: all 0.3s ease-out;
+    border-radius: 5px;
 }
 
 .sidebar h2 {
@@ -156,21 +162,22 @@ body {
 /* Responsive adjustment */
 @media (max-width: 768px) {
     .sidebar {
-        width: 60px;
+        width: 30px;
         align-items: center;
         padding: 10px;
     }
     
-    .sidebar h3 {
-        display: none;
+    .sidebar h2 {
+        font-size: 0;
     }
     
     .sidebar a {
         justify-content: center;
         padding: 8px;
+        font-size: 0;
     }
     
-    .sidebar a span {
+    .sidebar a span{
         display: none; /* Hide text on small screens */
     }
     
@@ -242,14 +249,32 @@ body {
 
 .feed {
     position: fixed;
-    top: 75px;
+    top: 70px;
     left: 195px;
     height: calc(100vh - 70px);
-    width: 100%;
+    width: 150vh;
     background: #ffffff50;
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 10px 20px;
     z-index: 0;
+    border-radius: 5px;
+}
+
+.trend {
+    position: fixed;
+    right: 0;
+    top: 70px; /* Adjust based on navbar height */
+    width: 210px;
+    height: calc(100vh - 75px); /* Full height minus navbar */
+    background: #1a1a1a50; /* Dark background matching theme */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 1;
+    color: #fff;
+    transition: all 0.3s ease-out;
+    border-radius: 5px;
 }

@@ -33,6 +33,10 @@ app.get("/signup", (req, res) => {
     res.sendFile(path.join(templatePath, "signup.html"))
 })
 
+app.get("/profile", (req, res) => {
+    res.sendFile(path.join(templatePath, "profile.html"))
+})
+
 // Add a route for /register that serves the register page
 app.get("/register", (req, res) => {
     res.sendFile(path.join(templatePath, "register.html"))
