@@ -73,11 +73,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageContainer = document.createElement('div');
         messageContainer.className = 'message-container';
         
+        const isOwnMessage = msg.username === username;
+        
+        // Create message content wrapper
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = isOwnMessage ? 'message-wrapper own' : 'message-wrapper';
+        
+        // Add profile picture
+        const profilePic = document.createElement('div');
+        profilePic.className = 'message-profile-pic';
+        const profileImg = document.createElement('img');
+        profileImg.src = msg.profilePic || '/images/default-profile.png';
+        profileImg.alt = msg.displayName || msg.username;
+        profilePic.appendChild(profileImg);
+        
+        // Create message content container
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
         // Create header with sender name and timestamp
         const header = document.createElement('div');
         header.className = 'message-header';
-        
-        const isOwnMessage = msg.username === username;
         
         // Add sender name with appropriate alignment
         const sender = document.createElement('span');
@@ -90,9 +106,6 @@ document.addEventListener('DOMContentLoaded', function() {
             timestamp = document.createElement('span');
             timestamp.className = 'message-time';
             timestamp.textContent = formatTime(new Date(msg.timestamp));
-            timestamp.style.marginLeft = '8px';
-            timestamp.style.fontSize = '0.7rem';
-            timestamp.style.opacity = '0.7';
         }
         
         // Arrange header elements based on message ownership
@@ -110,16 +123,26 @@ document.addEventListener('DOMContentLoaded', function() {
             if (timestamp) header.appendChild(timestamp);
         }
         
-        messageContainer.appendChild(header);
+        messageContent.appendChild(header);
         
-        // Add message content
+        // Add message text
         const messageElement = document.createElement('div');
         messageElement.className = 'message ' + 
             (isOwnMessage ? 'message-own' : 'message-other');
         messageElement.textContent = msg.text;
-        messageContainer.appendChild(messageElement);
+        messageContent.appendChild(messageElement);
+        
+        // Arrange profile pic and message content based on ownership
+        if (isOwnMessage) {
+            messageWrapper.appendChild(messageContent);
+            messageWrapper.appendChild(profilePic);
+        } else {
+            messageWrapper.appendChild(profilePic);
+            messageWrapper.appendChild(messageContent);
+        }
         
         // Add to container and scroll to bottom
+        messageContainer.appendChild(messageWrapper);
         messagesContainer.appendChild(messageContainer);
         scrollToBottom();
     }
