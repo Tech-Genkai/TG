@@ -386,7 +386,7 @@ body {
 /* Profile Page Styles */
 .wrapper {
     position: fixed;
-    left: 170px;
+    left: 190px;
     top: 70px;
     width: calc(100% - 170px);
     height: calc(100vh - 75px);
