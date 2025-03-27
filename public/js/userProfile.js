@@ -23,13 +23,20 @@ document.addEventListener('DOMContentLoaded', function() {
         // Redirect to the private messaging page with this user
         window.location.href = `/messages/${targetUsername}`;
     });
+
+    // Add event listener for friend button
+    document.getElementById('friendBtn').addEventListener('click', function() {
+        handleFriendAction(targetUsername);
+    });
 });
 
 async function fetchUserProfile(username) {
     try {
         const currentUsername = localStorage.getItem('username');
         
-        const response = await fetch(`/api/user/${username}/profile`, {
+        console.log(`Fetching profile for user: ${username}`);
+        
+        const response = await fetch(`/api/user/${encodeURIComponent(username)}/profile`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -50,6 +57,7 @@ async function fetchUserProfile(username) {
         }
         
         const data = await response.json();
+        console.log("User data received:", data);
         
         // Update page with user data
         updateUserProfileUI(data);
@@ -57,6 +65,11 @@ async function fetchUserProfile(username) {
         // If this is the current user's profile, redirect to /profile
         if (data.isCurrentUser) {
             window.location.href = '/profile';
+        }
+
+        // Update friendship UI if status is provided in the response
+        if (data.friendshipStatus) {
+            updateFriendshipUI(data.friendshipStatus, username);
         }
     } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -67,6 +80,9 @@ async function fetchUserProfile(username) {
 function updateUserProfileUI(userData) {
     // Set page title
     document.title = `TG - ${userData.displayName}'s Profile`;
+    
+    // Debug log
+    console.log("User profile data:", userData);
     
     // Update profile picture
     const profilePic = document.getElementById('userProfilePic');
@@ -80,6 +96,21 @@ function updateUserProfileUI(userData) {
     const usernameEl = document.getElementById('userUsername');
     if (displayNameEl) displayNameEl.textContent = userData.displayName;
     if (usernameEl) usernameEl.textContent = `@${userData.username}`;
+    
+    // Update friend count
+    const friendCountEl = document.getElementById('userFriendCount');
+    if (friendCountEl) {
+        friendCountEl.textContent = userData.friendCount || 0;
+        console.log(`Friend count set to: ${userData.friendCount || 0}`);
+    }
+    
+    // Set up friends link
+    const friendsLink = document.getElementById('userFriendsLink');
+    if (friendsLink) {
+        const encodedUsername = encodeURIComponent(userData.username);
+        friendsLink.href = `/friends/${encodedUsername}`;
+        console.log(`Friend link set to: /friends/${encodedUsername}`);
+    }
     
     // Format date of birth if present
     let formattedDob = 'Not specified';
@@ -103,4 +134,99 @@ function updateUserProfileUI(userData) {
     const dobEl = document.getElementById('userDob');
     if (genderEl) genderEl.textContent = userData.gender;
     if (dobEl) dobEl.textContent = formattedDob;
+}
+
+async function fetchFriendshipStatus(username) {
+    try {
+        const currentUsername = localStorage.getItem('username');
+        
+        const response = await fetch(`/api/friends/status/${username}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-username': currentUsername
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        updateFriendshipUI(data.status, username);
+    } catch (error) {
+        console.error('Error fetching friendship status:', error);
+        // Default to "not friends" in case of error
+        updateFriendshipUI('not_friends', username);
+    }
+}
+
+function updateFriendshipUI(status, username) {
+    const friendBtn = document.getElementById('friendBtn');
+    const friendshipStatus = document.getElementById('friendshipStatus');
+    
+    // Remove all classes first
+    friendBtn.classList.remove('friend-btn', 'pending-btn', 'remove-friend-btn');
+    
+    switch(status) {
+        case 'friends':
+            friendBtn.textContent = 'Remove Friend';
+            friendBtn.classList.add('remove-friend-btn');
+            friendBtn.innerHTML = '<i class="bi bi-person-dash-fill"></i>Remove Friend';
+            friendshipStatus.textContent = 'Friends';
+            break;
+            
+        case 'pending_sent':
+            friendBtn.textContent = 'Request Pending';
+            friendBtn.classList.add('pending-btn');
+            friendBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>Request Pending';
+            friendshipStatus.textContent = 'Friend Request Sent';
+            break;
+            
+        case 'pending_received':
+            friendBtn.textContent = 'Accept Request';
+            friendBtn.classList.add('friend-btn');
+            friendBtn.innerHTML = '<i class="bi bi-person-check-fill"></i>Accept Request';
+            friendshipStatus.textContent = 'Friend Request Received';
+            break;
+            
+        case 'not_friends':
+        default:
+            friendBtn.textContent = 'Add Friend';
+            friendBtn.classList.add('friend-btn');
+            friendBtn.innerHTML = '<i class="bi bi-person-plus-fill"></i>Add Friend';
+            friendshipStatus.textContent = 'Not Friends';
+            break;
+    }
+}
+
+async function handleFriendAction(username) {
+    try {
+        const currentUsername = localStorage.getItem('username');
+        
+        const response = await fetch(`/api/friends/action/${username}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-username': currentUsername
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            notifications.success(data.title, data.message);
+            // Refresh the friendship status
+            fetchFriendshipStatus(username);
+        } else {
+            notifications.error("Error", data.message || "Could not process friend request.");
+        }
+    } catch (error) {
+        console.error('Error handling friend action:', error);
+        notifications.error("Error", "Failed to process friend request.");
+    }
 } 

@@ -1,0 +1,371 @@
+/* Profile Page Specific Styles */
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #1a1a1a;
+    border-radius: 10px;
+    padding: 25px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 0 15px var(--dragon);
+    position: relative;
+    color: #fff;
+}
+
+.modal-content h2 {
+    color: var(--dragon);
+    text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 0 0 5px rgba(242, 24, 217, 0.5);
+}
+
+/* Form styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #fff;
+    font-weight: bold;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    background-color: #252525;
+    color: #fff;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--dragon);
+    box-shadow: 0 0 5px var(--dragon);
+}
+
+.form-hint {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 5px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.form-actions button {
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+}
+
+.form-actions button[type="button"] {
+    background-color: #333;
+    color: #fff;
+}
+
+.form-actions button[type="submit"] {
+    background-color: var(--dragon);
+    color: #fff;
+}
+
+.form-actions button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 10px rgba(242, 24, 217, 0.5);
+}
+
+/* Loading animation for the upload button */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.loading i {
+    animation: spin 1.5s linear infinite;
+}
+
+.loading {
+    opacity: 0.8;
+}
+
+/* Image preview for profile pic upload */
+.preview-container {
+    width: 150px;
+    height: 150px;
+    margin: 20px auto;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--dragon);
+    box-shadow: 0 0 10px rgba(242, 24, 217, 0.5);
+    position: relative;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.preview-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.preview-container:hover img {
+    transform: scale(1.05);
+    filter: brightness(0.7);
+}
+
+.preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(2px);
+}
+
+.preview-overlay i {
+    font-size: 24px;
+    color: var(--dragon);
+    margin-bottom: 5px;
+}
+
+.preview-container:hover .preview-overlay {
+    opacity: 1;
+}
+
+/* Enhancements for existing profile elements */
+.profile-picture {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--dragon);
+    box-shadow: 0 0 15px rgba(242, 24, 217, 0.5);
+    margin-right: 30px;
+    transition: all 0.3s ease;
+}
+
+.profile-picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.profile-picture:hover img {
+    filter: brightness(0.7);
+}
+
+.edit-profile-pic {
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 20px;
+    cursor: pointer;
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%) translateY(50px);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    font-weight: bold;
+    backdrop-filter: blur(2px);
+    white-space: nowrap;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    width: auto;
+    min-width: 150px;
+    justify-content: center;
+}
+
+.profile-picture:hover .edit-profile-pic {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+.edit-profile-pic i {
+    color: var(--dragon);
+    font-size: 16px;
+}
+
+.edit-profile-pic:hover {
+    background-color: rgba(0,0,0,0.8);
+    box-shadow: 0 0 10px var(--dragon);
+    transform: translateX(-50%) translateY(0) scale(1.05);
+}
+
+/* File input styling */
+.file-upload-container {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.file-upload-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: #333;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 10px;
+    border: 1px solid #555;
+}
+
+.file-upload-button:hover {
+    background-color: #444;
+    border-color: var(--dragon);
+    box-shadow: 0 0 5px var(--dragon);
+}
+
+.file-upload-button i {
+    color: var(--dragon);
+}
+
+input[type="file"] {
+    opacity: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.selected-file-name {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 5px;
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Edit profile button */
+.edit-profile-btn {
+    background-color: #333;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 20px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+}
+
+.edit-profile-btn i {
+    color: var(--dragon);
+}
+
+.edit-profile-btn:hover {
+    background-color: #444;
+    transform: translateY(-2px);
+    box-shadow: 0 0 10px var(--dragon);
+}
+
+.profile-link {
+    color: var(--dragon);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.profile-link:hover {
+    text-shadow: 0 0 5px var(--dragon);
+    text-decoration: underline;
+}
+
+/* Modern friend count styling */
+.friend-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: transparent;
+    color: #fff;
+    padding: 5px 0;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    cursor: pointer;
+    width: auto;
+    max-width: fit-content;
+}
+
+.friend-count:hover {
+    color: var(--dragon);
+    transform: translateY(-2px);
+    text-shadow: 0 0 8px rgba(242, 24, 217, 0.3);
+}
+
+.friend-count i {
+    color: var(--dragon);
+    font-size: 16px;
+}
+
+/* Remove friend-count-container since we no longer need it */
+.friend-count-container {
+    display: none;
+}
+
+/* Remove profile-link specific styling since we're not using it for friends anymore */
+.profile-link i {
+    display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 810px) {
+    .modal-content {
+        width: 90%;
+        padding: 15px;
+    }
+    
+    .preview-container {
+        width: 120px;
+        height: 120px;
+    }
+} 

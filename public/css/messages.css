@@ -1,18 +1,19 @@
 /* Messages page styling */
 .messaging-container {
     display: flex;
-    position: absolute;
+    position: fixed;
     top: 60px;
     left: 240px;
     right: 0;
     bottom: 0;
     background-color: rgba(22, 22, 28, 0.5);
     backdrop-filter: blur(10px);
-    border-radius: 10px;
-    margin: 20px;
+    border-radius: 0;
+    margin: 0;
     overflow: hidden;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Conversations list styling */
@@ -80,6 +81,7 @@
     overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
+    padding-right: 4px;
 }
 
 .conversation-item {
@@ -179,7 +181,7 @@
 
 .chat-container {
     flex: 1;
-    display: flex;
+    display: none;
     flex-direction: column;
     height: 100%;
 }
@@ -224,13 +226,14 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 15px 15px 15px 15px;
+    padding: 15px;
     display: flex;
     flex-direction: column;
     background-color: rgba(15, 15, 22, 0.3);
     scrollbar-width: thin;
     scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
     box-sizing: border-box;
+    padding-right: 4px;
 }
 
 /* Empty state styling */
@@ -267,7 +270,7 @@
 }
 
 .empty-state p {
-    margin: 0 0 20px 0;
+    margin: 0;
     text-align: center;
     max-width: 280px;
     color: rgba(255, 255, 255, 0.6);
@@ -492,17 +495,6 @@
     font-size: 0.9rem;
 }
 
-.error-message {
-    background-color: rgba(220, 53, 69, 0.1);
-    border-radius: 5px;
-    margin: 10px 0;
-    border: 1px solid rgba(220, 53, 69, 0.2);
-}
-
-.error-message i {
-    color: rgba(220, 53, 69, 0.8);
-}
-
 .conversations .no-results {
     text-align: center;
     padding: 20px 10px;
@@ -523,56 +515,21 @@
     padding: 0 15px;
 }
 
-.mobile-close-btn {
-    display: block;
-    width: 100%;
-    padding: 10px;
-    margin-top: 15px;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.2s;
-    text-align: center;
-}
-
-.mobile-close-btn:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-}
-
-.mobile-close-btn:active {
-    transform: scale(0.98);
-}
-
-/* Add consistent scrollbar styling */
-/* Apply scrollbar styling to all scrollable elements */
-.conversations,
-.chat-messages,
-.search-results {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
-}
-
 /* Webkit browsers (Chrome, Safari, newer Edge) */
 .conversations::-webkit-scrollbar,
-.chat-messages::-webkit-scrollbar,
-.search-results::-webkit-scrollbar {
+.chat-messages::-webkit-scrollbar {
     width: 14px;
 }
 
 .conversations::-webkit-scrollbar-track,
-.chat-messages::-webkit-scrollbar-track,
-.search-results::-webkit-scrollbar-track {
+.chat-messages::-webkit-scrollbar-track {
     background: rgba(26, 26, 26, 0.7);
     border-radius: 10px;
     margin: 2px 0;
 }
 
 .conversations::-webkit-scrollbar-thumb,
-.chat-messages::-webkit-scrollbar-thumb,
-.search-results::-webkit-scrollbar-thumb {
+.chat-messages::-webkit-scrollbar-thumb {
     background-color: rgba(242, 24, 217, 0.7);
     border-radius: 10px;
     border: 2px solid rgba(26, 26, 26, 0.7);
@@ -580,58 +537,14 @@
 }
 
 .conversations::-webkit-scrollbar-thumb:hover,
-.chat-messages::-webkit-scrollbar-thumb:hover,
-.search-results::-webkit-scrollbar-thumb:hover {
+.chat-messages::-webkit-scrollbar-thumb:hover {
     background-color: rgba(242, 24, 217, 0.9);
 }
 
-/* Also style any potential scrollable containers in modals or other areas */
-* {
-    /* Standard property supported by newer browsers */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
-}
-
-/* Ensure proper padding for scrollbar spaces */
-.conversations, .chat-messages {
-    padding-right: 4px; /* Add slight padding to avoid content touching scrollbar */
-}
-
-/* Add Firefox-only fixes if needed for scrollbar consistency */
+/* Firefox scrollbar styles */
 @-moz-document url-prefix() {
     .conversations, .chat-messages {
         scrollbar-width: thin;
         scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
     }
-}
-
-/* Apply scrollbar to any future search result containers */
-.search-results,
-div[class*="scroll"],
-div[class*="overflow-y-auto"],
-div[class*="overflow-auto"] {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
-}
-
-/* Ensure webkit scrollbars are consistent across all containers */
-*::-webkit-scrollbar {
-    width: 14px;
-}
-
-*::-webkit-scrollbar-track {
-    background: rgba(26, 26, 26, 0.7);
-    border-radius: 10px;
-    margin: 2px 0;
-}
-
-*::-webkit-scrollbar-thumb {
-    background-color: rgba(242, 24, 217, 0.7);
-    border-radius: 10px;
-    border: 2px solid rgba(26, 26, 26, 0.7);
-    min-height: 40px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(242, 24, 217, 0.9);
 } 

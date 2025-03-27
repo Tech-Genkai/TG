@@ -106,14 +106,63 @@ const ConversationSchema = new mongoose.Schema({
     }
 })
 
+// Friend request schema
+const FriendRequestSchema = new mongoose.Schema({
+    sender: {
+        type: String,
+        required: true,
+        ref: 'collection1'
+    },
+    recipient: {
+        type: String,
+        required: true,
+        ref: 'collection1'
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'accepted', 'rejected'],
+        default: 'pending'
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+})
+
+// Friends schema
+const FriendSchema = new mongoose.Schema({
+    user: {
+        type: String,
+        required: true,
+        ref: 'collection1'
+    },
+    friend: {
+        type: String,
+        required: true,
+        ref: 'collection1'
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+})
+
 const collection = new mongoose.model("collection1", LoginSchema)
 const Message = new mongoose.model("Message", MessageSchema)
 const DirectMessage = new mongoose.model("DirectMessage", DirectMessageSchema)
 const Conversation = new mongoose.model("Conversation", ConversationSchema)
+const FriendRequest = new mongoose.model("FriendRequest", FriendRequestSchema)
+const Friend = new mongoose.model("Friend", FriendSchema)
 
 module.exports = {
     collection,
     Message,
     DirectMessage,
-    Conversation
+    Conversation,
+    FriendRequest,
+    Friend
 }

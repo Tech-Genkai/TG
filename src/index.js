@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 const path = require('path')
-const { collection, Message, DirectMessage, Conversation } = require("./mongodb")
+const { collection, Message, DirectMessage, Conversation, FriendRequest, Friend } = require("./mongodb")
 const multer = require('multer')
 const crypto = require('crypto')
 const http = require('http')
@@ -226,14 +226,18 @@ app.get("/api/user/profile", async(req, res) => {
         const formattedGender = user.gender 
             ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) 
             : 'Not specified';
-            
+        
+        // Get friend count
+        const friendCount = await Friend.countDocuments({ user: username });
+        
         // Return all profile data
         res.json({
             username: user.username,
             displayName: user.displayName || user.username,
             profilePic: user.profilePic || '/images/default-profile.png',
             gender: formattedGender,
-            dob: user.dateOfBirth ? user.dateOfBirth : 'Not specified'
+            dob: user.dateOfBirth ? user.dateOfBirth : 'Not specified',
+            friendCount: friendCount
         });
     } catch (error) {
         console.error('Error fetching profile:', error);
@@ -349,15 +353,56 @@ app.get("/api/user/:username/profile", async(req, res) => {
         const formattedGender = user.gender 
             ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) 
             : 'Not specified';
+
+        // Get friend count
+        const friendCount = await Friend.countDocuments({ user: targetUsername });
+
+        // Check friendship status
+        let friendshipStatus = 'not_friends';
+        
+        // Check if they are friends
+        const areFriends = await Friend.findOne({
+            $or: [
+                { user: currentUsername, friend: targetUsername },
+                { user: targetUsername, friend: currentUsername }
+            ]
+        });
+        
+        if (areFriends) {
+            friendshipStatus = 'friends';
+        } else {
+            // Check for pending requests
+            const sentRequest = await FriendRequest.findOne({
+                sender: currentUsername,
+                recipient: targetUsername,
+                status: 'pending'
+            });
             
-        // Return user profile data
+            if (sentRequest) {
+                friendshipStatus = 'pending_sent';
+            } else {
+                const receivedRequest = await FriendRequest.findOne({
+                    sender: targetUsername,
+                    recipient: currentUsername,
+                    status: 'pending'
+                });
+                
+                if (receivedRequest) {
+                    friendshipStatus = 'pending_received';
+                }
+            }
+        }
+            
+        // Return user profile data with friendship status
         res.json({
             username: user.username,
             displayName: user.displayName || user.username,
             profilePic: user.profilePic || '/images/default-profile.png',
             gender: formattedGender,
             dob: user.dateOfBirth ? user.dateOfBirth : 'Not specified',
-            isCurrentUser: currentUsername === targetUsername
+            isCurrentUser: currentUsername === targetUsername,
+            friendshipStatus: friendshipStatus,
+            friendCount: friendCount
         });
     } catch (error) {
         console.error('Error fetching user profile:', error);
@@ -871,6 +916,414 @@ app.get('/messages/new/:username', async (req, res) => {
     } catch (error) {
         console.error('Error creating conversation:', error);
         res.status(500).send('An error occurred');
+    }
+});
+
+// Add endpoint to get friendship status between two users
+app.get('/api/friends/status/:username', async (req, res) => {
+    try {
+        const currentUsername = req.headers['x-username'];
+        const targetUsername = req.params.username;
+        
+        if (!currentUsername) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        // Check if they are already friends
+        const areFriends = await Friend.findOne({
+            $or: [
+                { user: currentUsername, friend: targetUsername },
+                { user: targetUsername, friend: currentUsername }
+            ]
+        });
+        
+        if (areFriends) {
+            return res.json({ status: 'friends' });
+        }
+        
+        // Check if there's a pending request from current user to target
+        const sentRequest = await FriendRequest.findOne({
+            sender: currentUsername,
+            recipient: targetUsername,
+            status: 'pending'
+        });
+        
+        if (sentRequest) {
+            return res.json({ status: 'pending_sent' });
+        }
+        
+        // Check if there's a pending request from target to current user
+        const receivedRequest = await FriendRequest.findOne({
+            sender: targetUsername,
+            recipient: currentUsername,
+            status: 'pending'
+        });
+        
+        if (receivedRequest) {
+            return res.json({ status: 'pending_received' });
+        }
+        
+        // No relationship found
+        return res.json({ status: 'not_friends' });
+    } catch (error) {
+        console.error('Error checking friendship status:', error);
+        res.status(500).json({ error: 'Error checking friendship status' });
+    }
+});
+
+// Add endpoint to perform friend actions (add, accept, remove)
+app.post('/api/friends/action/:username', async (req, res) => {
+    try {
+        const currentUsername = req.headers['x-username'];
+        const targetUsername = req.params.username;
+        
+        if (!currentUsername) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        // Check if target user exists
+        const targetUser = await collection.findOne({ username: targetUsername });
+        if (!targetUser) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'User not found' 
+            });
+        }
+        
+        // Get current friendship status
+        const areFriends = await Friend.findOne({
+            $or: [
+                { user: currentUsername, friend: targetUsername },
+                { user: targetUsername, friend: currentUsername }
+            ]
+        });
+        
+        const sentRequest = await FriendRequest.findOne({
+            sender: currentUsername,
+            recipient: targetUsername,
+            status: 'pending'
+        });
+        
+        const receivedRequest = await FriendRequest.findOne({
+            sender: targetUsername,
+            recipient: currentUsername,
+            status: 'pending'
+        });
+        
+        // Handle action based on current status
+        if (areFriends) {
+            // If they're already friends, remove friendship
+            await Friend.deleteMany({
+                $or: [
+                    { user: currentUsername, friend: targetUsername },
+                    { user: targetUsername, friend: currentUsername }
+                ]
+            });
+            
+            return res.json({
+                success: true,
+                title: 'Friend Removed',
+                message: `You are no longer friends with ${targetUser.displayName || targetUsername}`
+            });
+        } else if (sentRequest) {
+            // If there's a pending request from current user, cancel it
+            await FriendRequest.deleteOne({ _id: sentRequest._id });
+            
+            return res.json({
+                success: true,
+                title: 'Request Cancelled',
+                message: `Friend request to ${targetUser.displayName || targetUsername} cancelled`
+            });
+        } else if (receivedRequest) {
+            // If there's a pending request from target user, accept it
+            await FriendRequest.updateOne(
+                { _id: receivedRequest._id },
+                { $set: { status: 'accepted', updatedAt: new Date() } }
+            );
+            
+            // Create friend relationship (bidirectional)
+            await Friend.create([
+                { user: currentUsername, friend: targetUsername },
+                { user: targetUsername, friend: currentUsername }
+            ]);
+            
+            return res.json({
+                success: true,
+                title: 'Friend Added',
+                message: `You are now friends with ${targetUser.displayName || targetUsername}`
+            });
+        } else {
+            // No existing relationship, create new friend request
+            await FriendRequest.create({
+                sender: currentUsername,
+                recipient: targetUsername,
+                status: 'pending'
+            });
+            
+            return res.json({
+                success: true,
+                title: 'Request Sent',
+                message: `Friend request sent to ${targetUser.displayName || targetUsername}`
+            });
+        }
+    } catch (error) {
+        console.error('Error performing friend action:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error processing friend action' 
+        });
+    }
+});
+
+// Add endpoint to get friends list
+app.get('/api/friends', async (req, res) => {
+    try {
+        const username = req.headers['x-username'];
+        
+        if (!username) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        // Find friends
+        const friendships = await Friend.find({ user: username });
+        
+        if (friendships.length === 0) {
+            return res.json({ friends: [] });
+        }
+        
+        // Get friend usernames
+        const friendUsernames = friendships.map(f => f.friend);
+        
+        // Get profile details for each friend
+        const friendProfiles = await collection.find({ 
+            username: { $in: friendUsernames } 
+        });
+        
+        // Format friend data
+        const friends = friendProfiles.map(profile => ({
+            username: profile.username,
+            displayName: profile.displayName || profile.username,
+            profilePic: profile.profilePic || '/images/default-profile.png'
+        }));
+        
+        res.json({ friends });
+    } catch (error) {
+        console.error('Error getting friends list:', error);
+        res.status(500).json({ error: 'Error getting friends list' });
+    }
+});
+
+// Add endpoint to get friend requests
+app.get('/api/friends/requests', async (req, res) => {
+    try {
+        const username = req.headers['x-username'];
+        
+        if (!username) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        // Find received pending requests
+        const receivedRequests = await FriendRequest.find({ 
+            recipient: username,
+            status: 'pending'
+        });
+        
+        if (receivedRequests.length === 0) {
+            return res.json({ requests: [] });
+        }
+        
+        // Get sender usernames
+        const senderUsernames = receivedRequests.map(req => req.sender);
+        
+        // Get profile details for each sender
+        const senderProfiles = await collection.find({ 
+            username: { $in: senderUsernames } 
+        });
+        
+        // Create a map of username to profile data for faster lookup
+        const profileMap = new Map();
+        senderProfiles.forEach(profile => {
+            profileMap.set(profile.username, profile);
+        });
+        
+        // Format request data
+        const requests = receivedRequests.map(request => {
+            const profile = profileMap.get(request.sender);
+            return {
+                requestId: request._id,
+                username: request.sender,
+                displayName: profile ? (profile.displayName || request.sender) : request.sender,
+                profilePic: profile ? (profile.profilePic || '/images/default-profile.png') : '/images/default-profile.png',
+                createdAt: request.createdAt
+            };
+        });
+        
+        res.json({ requests });
+    } catch (error) {
+        console.error('Error getting friend requests:', error);
+        res.status(500).json({ error: 'Error getting friend requests' });
+    }
+});
+
+// Add endpoint to handle friend request response (accept/reject)
+app.post('/api/friends/requests/:requestId', async (req, res) => {
+    try {
+        const username = req.headers['x-username'];
+        const requestId = req.params.requestId;
+        const { action } = req.body;
+        
+        if (!username) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        if (!action || !['accept', 'reject'].includes(action)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Invalid action specified' 
+            });
+        }
+        
+        // Find the request
+        const request = await FriendRequest.findById(requestId);
+        
+        if (!request) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Friend request not found' 
+            });
+        }
+        
+        // Verify the current user is the recipient
+        if (request.recipient !== username) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'You are not authorized to respond to this request' 
+            });
+        }
+        
+        if (request.status !== 'pending') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'This request has already been processed' 
+            });
+        }
+        
+        // Get sender profile for the response message
+        const senderProfile = await collection.findOne({ username: request.sender });
+        const senderName = senderProfile ? (senderProfile.displayName || request.sender) : request.sender;
+        
+        if (action === 'accept') {
+            // Update request status
+            await FriendRequest.updateOne(
+                { _id: requestId },
+                { $set: { status: 'accepted', updatedAt: new Date() } }
+            );
+            
+            // Create bidirectional friendship
+            await Friend.create([
+                { user: username, friend: request.sender },
+                { user: request.sender, friend: username }
+            ]);
+            
+            return res.json({
+                success: true,
+                message: `You are now friends with ${senderName}`
+            });
+        } else {
+            // Reject the request
+            await FriendRequest.updateOne(
+                { _id: requestId },
+                { $set: { status: 'rejected', updatedAt: new Date() } }
+            );
+            
+            return res.json({
+                success: true,
+                message: `Friend request from ${senderName} rejected`
+            });
+        }
+    } catch (error) {
+        console.error('Error processing friend request response:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error processing friend request' 
+        });
+    }
+});
+
+// Add route for viewing a specific user's friends
+app.get('/friends/:username', preventCaching, (req, res) => {
+    console.log(`Route hit: /friends/${req.params.username}`);
+    res.sendFile(path.join(templatePath, 'friends.html'));
+});
+
+// Add route for friends page
+app.get('/friends', preventCaching, (req, res) => {
+    res.sendFile(path.join(templatePath, 'friends.html'));
+});
+
+// Add endpoint to get another user's friends list
+app.get('/api/friends/:username', async (req, res) => {
+    try {
+        const currentUsername = req.headers['x-username'];
+        const targetUsername = req.params.username;
+        
+        console.log(`API Request: Get friends list for ${targetUsername} by ${currentUsername}`);
+        
+        if (!currentUsername) {
+            console.log('Error: User not authenticated');
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        // Check if the target user exists
+        const targetUser = await collection.findOne({ username: targetUsername });
+        if (!targetUser) {
+            console.log(`Error: User not found - ${targetUsername}`);
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Check if users are friends or if viewing own friends
+        if (currentUsername !== targetUsername) {
+            const areFriends = await Friend.findOne({
+                $or: [
+                    { user: currentUsername, friend: targetUsername },
+                    { user: targetUsername, friend: currentUsername }
+                ]
+            });
+            
+            if (!areFriends) {
+                console.log(`Error: Not friends - ${currentUsername} and ${targetUsername}`);
+                return res.status(403).json({ error: 'You must be friends with this user to view their friends list' });
+            }
+        }
+        
+        // Find friends
+        const friendships = await Friend.find({ user: targetUsername });
+        console.log(`Found ${friendships.length} friends for ${targetUsername}`);
+        
+        if (friendships.length === 0) {
+            return res.json({ friends: [] });
+        }
+        
+        // Get friend usernames
+        const friendUsernames = friendships.map(f => f.friend);
+        
+        // Get profile details for each friend
+        const friendProfiles = await collection.find({ 
+            username: { $in: friendUsernames } 
+        });
+        
+        // Format friend data
+        const friends = friendProfiles.map(profile => ({
+            username: profile.username,
+            displayName: profile.displayName || profile.username,
+            profilePic: profile.profilePic || '/images/default-profile.png'
+        }));
+        
+        console.log(`Sending ${friends.length} formatted friends`);
+        res.json({ friends });
+    } catch (error) {
+        console.error('Error getting user friends list:', error);
+        res.status(500).json({ error: 'Error getting friends list' });
     }
 });
 

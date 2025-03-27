@@ -104,6 +104,30 @@ body {
     opacity: 1;
 }
 
+/* Active state for navbar icons */
+.nav-icons a.active img {
+    filter: drop-shadow(0px 0px 3px var(--dragon));
+    transform: scale(1.14);
+    opacity: 1;
+}
+
+.nav-icons a.active {
+    position: relative;
+}
+
+.nav-icons a.active::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
+    background-color: var(--dragon);
+    border-radius: 50%;
+    box-shadow: 0 0 5px var(--dragon);
+}
+
 .sidebar {
     position: fixed;
     left: 0;
@@ -171,10 +195,18 @@ body {
     transform: scale(1.1);
 }
 
-/* Optional: Active state for current page */
+/* Active state for current page */
 .sidebar a.active {
     background: #333333b0;
     color: var(--dragon);
+    box-shadow: 0 0 8px var(--dragon);
+    text-shadow: 0 0 5px var(--dragon);
+    border-left: 3px solid var(--dragon);
+}
+
+.sidebar a.active img {
+    filter: drop-shadow(0px 0px 3px var(--dragon));
+    transform: scale(1.1);
 }
 
 .feed {

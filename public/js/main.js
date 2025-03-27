@@ -23,6 +23,58 @@ function setLoginStatus(status) {
     localStorage.setItem('isLoggedIn', status);
 }
 
+// Set active page in sidebar
+function setActivePage() {
+    // Get current path
+    const currentPath = window.location.pathname;
+    
+    // Get all sidebar links
+    const sidebarLinks = document.querySelectorAll('.sidebar a');
+    
+    // Get all navbar icons
+    const navbarIcons = document.querySelectorAll('.nav-icons a');
+    
+    // Remove active class from all links and icons
+    sidebarLinks.forEach(link => link.classList.remove('active'));
+    navbarIcons.forEach(icon => icon.classList.remove('active'));
+    
+    // Function to check and mark active link
+    const checkAndMarkActive = (element, href) => {
+        // Special case for home page
+        if (href === '/' && (currentPath === '/' || currentPath === '/index.html')) {
+            element.classList.add('active');
+        }
+        // Special case for profile-related pages
+        else if (href === '/profile' && (currentPath.startsWith('/profile') || currentPath.startsWith('/user-profile'))) {
+            element.classList.add('active');
+        }
+        // Special case for messages
+        else if (href === '/messages' && currentPath.startsWith('/messages')) {
+            element.classList.add('active');
+        }
+        // Special case for friends
+        else if (href === '/friends' && currentPath.startsWith('/friends')) {
+            element.classList.add('active');
+        }
+        // Exact match for other pages
+        else if (href === currentPath) {
+            element.classList.add('active');
+        }
+    };
+    
+    // Add active class to current page link in sidebar
+    sidebarLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        checkAndMarkActive(link, href);
+    });
+    
+    // Add active class to current page icon in navbar
+    navbarIcons.forEach(icon => {
+        const href = icon.getAttribute('href');
+        checkAndMarkActive(icon, href);
+    });
+}
+
 // Initialize search functionality
 function initializeSearch() {
     const searchBar = document.querySelector('.search-bar input');
@@ -147,6 +199,9 @@ function initializeSearch() {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize search functionality
     initializeSearch();
+    
+    // Set active page in sidebar
+    setActivePage();
 });
 
 // Run on page load
@@ -163,5 +218,7 @@ document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
         // Page is now visible again (after using back button)
         checkLoginStatus();
+        // Update active page indicator when returning to the page
+        setActivePage();
     }
 }); 
