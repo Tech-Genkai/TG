@@ -1,17 +1,36 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
-// Use either local MongoDB or MongoDB Atlas
-const DB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/registration"
+// Ensure the database URI is set (must be provided in Render's environment variables)
+const DB_URI = process.env.MONGODB_URI;
 
-mongoose.connect(DB_URI)
-.then(()=>{
-    console.log("MongoDB connected successfully");
-})
-.catch((err)=>{
-    console.log("Failed to connect to MongoDB");
-    console.error(err);
-})
+if (!DB_URI) {
+    console.error("❌ MONGODB_URI is not set. Please configure it in Render's environment variables.");
+    process.exit(1); // Exit the app if no database URI is provided
+}
 
+// Mongoose connection options for better stability
+const options = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    connectTimeoutMS: 10000, // 10 seconds timeout
+    serverSelectionTimeoutMS: 5000, // 5 seconds server selection timeout
+};
+
+mongoose
+    .connect(DB_URI, options)
+    .then(() => {
+        console.log(`✅ MongoDB connected successfully to ${DB_URI}`);
+    })
+    .catch((err) => {
+        console.error("❌ Failed to connect to MongoDB:", err.message);
+        process.exit(1); // Exit the process if connection fails
+    });
+
+// Handle MongoDB disconnections and reconnect automatically
+mongoose.connection.on("disconnected", () => {
+    console.warn("⚠️ MongoDB connection lost. Attempting to reconnect...");
+    mongoose.connect(DB_URI, options);
+});
 const LoginSchema = new mongoose.Schema({
     username:{
         type:String,
