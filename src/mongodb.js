@@ -1,36 +1,29 @@
 const mongoose = require("mongoose");
 
-// Ensure the database URI is set (must be provided in Render's environment variables)
-const DB_URI = "mongodb+srv://Techgenkai:owQ93oULRw3tASA@cluster0.ovchals.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+// Ensure MONGODB_URI is set
+const DB_URI = process.env.MONGODB_URI;
 
 if (!DB_URI) {
     console.error("❌ MONGODB_URI is not set. Please configure it in Render's environment variables.");
-    process.exit(1); // Exit the app if no database URI is provided
+    process.exit(1);
 }
 
-// Mongoose connection options for better stability
-const options = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    connectTimeoutMS: 10000, // 10 seconds timeout
-    serverSelectionTimeoutMS: 5000, // 5 seconds server selection timeout
-};
-
 mongoose
-    .connect(DB_URI, options)
+    .connect(DB_URI) // Removed deprecated options
     .then(() => {
-        console.log(`✅ MongoDB connected successfully to ${DB_URI}`);
+        console.log(`✅ MongoDB connected successfully`);
     })
     .catch((err) => {
         console.error("❌ Failed to connect to MongoDB:", err.message);
-        process.exit(1); // Exit the process if connection fails
+        process.exit(1);
     });
 
-// Handle MongoDB disconnections and reconnect automatically
+// Handle MongoDB disconnections
 mongoose.connection.on("disconnected", () => {
     console.warn("⚠️ MongoDB connection lost. Attempting to reconnect...");
-    mongoose.connect(DB_URI, options);
+    mongoose.connect(DB_URI);
 });
+
 const LoginSchema = new mongoose.Schema({
     username:{
         type:String,
