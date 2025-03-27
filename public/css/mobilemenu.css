@@ -1,0 +1,109 @@
+/* Mobile Menu button enhancements */
+.mobile-menu-toggle {
+    /* Improve touch feedback */
+    transition: transform 0.2s ease-out, background-color 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.mobile-menu-toggle:active {
+    transform: scale(0.92);
+    background-color: #d617c1;
+    box-shadow: 0 0 15px var(--dragon);
+}
+
+/* Ripple effect for touch feedback */
+.mobile-menu-toggle::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.4);
+    opacity: 0;
+    transform: scale(0);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+.mobile-menu-toggle:active::after {
+    opacity: 1;
+    transform: scale(1.5);
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mobile-menu-toggle::after {
+        display: none;
+    }
+}
+
+/* Disable link highlighting on mobile */
+.sidebar a {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Sidebar backdrop overlay */
+.sidebar-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 9;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease-out, visibility 0.25s ease-out;
+}
+
+.sidebar-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Mobile specific improvements */
+@media (max-width: 600px) {
+    /* Increase z-index for mobile menu toggle */
+    .mobile-menu-toggle {
+        z-index: 11;
+    }
+    
+    /* Additional mobile optimizations */
+    body.sidebar-open {
+        overflow: hidden;
+    }
+    
+    .sidebar {
+        height: calc(var(--vh, 1vh) * 100 - 50px) !important;
+    }
+    
+    .feed, .wrapper {
+        height: calc(var(--vh, 1vh) * 100 - 50px) !important;
+    }
+    
+    .chat-messages, .profile-container {
+        max-height: calc(var(--vh, 1vh) * 100 - 140px) !important;
+    }
+    
+    /* Ensure scrollable areas work properly */
+    .chat-messages, .profile-container {
+        overflow-y: auto !important;
+    }
+}
+
+/* Make sure content is visible without scrolling on very small screens */
+@media (max-height: 600px) {
+    .profile-picture {
+        width: 80px !important;
+        height: 80px !important;
+    }
+    
+    .profile-picture img {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    .edit-profile-pic {
+        min-width: auto !important;
+        font-size: 10px !important;
+        padding: 4px 8px !important;
+    }
+} 

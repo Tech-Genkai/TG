@@ -3,11 +3,22 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    min-width: 500px;
+    min-width: 320px;
     background-color: black;
     margin: 0;
     font-family: Arial, sans-serif;
     --dragon: #f218d9f6;
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+}
+
+/* Touch-friendly improvements - increase clickable area */
+button, a, input[type="submit"] {
+    touch-action: manipulation;
+}
+
+/* Prevent content zoom on form fields in iOS */
+input, select, textarea {
+    font-size: 16px; /* Prevents zoom on focus in iOS */
 }
 
 .bg {
@@ -20,6 +31,7 @@ body {
     background-image: url('./images/bg.jpg');
     background-size: cover;
     background-position: center;
+    opacity: 1;
 }
 
 .navbar {
@@ -180,13 +192,15 @@ body {
     transition: transform 0.3s ease-out, filter 0.3s ease-out;
 }
 
-/* Make profile picture circular */
-.sidebar a[href="/profile"] img {
+/* Make profile picture circular with consistent styling */
+.sidebar a[href="/profile"] img, #sidebarProfilePic {
     width: 24px;
     height: 24px;
     border-radius: 50%;
     object-fit: cover;
     border: 1px solid #ffffff80;
+    box-shadow: 0 0 3px rgba(242, 24, 217, 0.3);
+    margin: 0 auto;
 }
 
 .sidebar a:hover {
@@ -301,6 +315,7 @@ body {
     
     .sidebar a {
         justify-content: center;
+        align-items: center;
         padding: 8px;
         font-size: 0;        
         width: 30px;
@@ -319,11 +334,239 @@ body {
         width: 30px;
         height: 30px;
         transition: all 0.3s ease-out;
-        padding-left: 10px;
+        padding: 0; /* Remove padding that causes off-center alignment */
+        margin: 0 auto;
     }
 
     .message {
         max-width: 85%;
+    }
+
+    /* Active states for touch devices */
+    a:active, button:active, .nav-icons a:active, .sidebar a:active {
+        transform: scale(0.97);
+        transition: transform 0.1s;
+    }
+    
+    /* Make hover effects work with touch */
+    .nav-icons a:active img {
+        filter: drop-shadow(0px 0px 2px var(--dragon));
+        transform: scale(1.14);
+        opacity: 1;
+    }
+    
+    .sidebar a:active {
+        background: #33333380;
+        box-shadow: 0 0 5px var(--dragon);
+        text-shadow: 0 0 5px var(--dragon);
+    }
+    
+    .sidebar a:active img {
+        filter: drop-shadow(0px 0px 2px var(--dragon));
+        transform: scale(1.1);
+    }
+    
+    /* Reduce notification size */
+    .notification-container {
+        max-width: calc(100% - 20px);
+    }
+
+    /* Fix profile picture in sidebar with consistent dimensions */
+    .sidebar a[href="/profile"] img, #sidebarProfilePic {
+        width: 30px;
+        height: 30px;
+        border-width: 1px;
+    }
+}
+
+/* Additional breakpoints for smaller mobile devices */
+@media (max-width: 600px) {
+    body {
+        min-width: auto; /* Remove min-width constraint for smaller devices */
+    }
+    
+    .navbar {
+        padding: 5px 10px;
+        height: 50px;
+    }
+    
+    .Org-logo {
+        display: none; /* Hide logo on very small devices */
+    }
+    
+    .search {
+        width: 150px; /* Smaller search input */
+    }
+    
+    .search-bar input {
+        padding: 6px 10px;
+        font-size: 14px;
+        height: 30px;
+    }
+    
+    .nav-icons {
+        gap: 15px;
+        margin-right: 10px;
+    }
+    
+    .nav-icons a img {
+        width: 25px;
+        height: 25px;
+    }
+    
+    /* Feed and wrapper full width when sidebar collapsed */
+    .feed, .wrapper {
+        left: 0;
+        width: 100%;
+        padding: 10px;
+        top: 50px;
+        height: calc(100vh - 50px);
+        transition: left 0.3s ease, width 0.3s ease;
+        z-index: 1;
+    }
+    
+    /* Adjust position when sidebar is shown */
+    .sidebar.show ~ .feed, 
+    .sidebar.show ~ .wrapper {
+        left: 50px;
+        width: calc(100% - 50px);
+    }
+    
+    /* Mobile menu toggle visibility */
+    .mobile-menu-toggle {
+        display: flex;
+    }
+    
+    /* Fix sidebar overlapping content on very small screens */
+    .sidebar {
+        top: 50px;
+        height: calc(100vh - 50px);
+        z-index: 10;
+        background-color: rgba(26, 26, 26, 0.9);
+        transform: translateX(-100%);
+        transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                  box-shadow 0.25s ease-out, 
+                  background-color 0.25s ease-out;
+        will-change: transform; /* Hardware acceleration hint */
+    }
+    
+    /* Sidebar styling when visible */
+    .sidebar.show {
+        transform: translateX(0);
+        box-shadow: 5px 0 20px rgba(0, 0, 0, 0.5);
+        background-color: rgba(26, 26, 26, 0.95);
+    }
+    
+    /* Improve sidebar links for touch */
+    .sidebar a {
+        padding: 15px 0; /* Larger touch target */
+        margin-bottom: 10px;
+    }
+    
+    /* Better feedback on touch */
+    .sidebar a:active {
+        background-color: rgba(242, 24, 217, 0.3);
+        transform: scale(0.98);
+        transition: transform 0.1s ease-out, background-color 0.1s ease-out;
+    }
+    
+    /* Better spacing for chat elements */
+    .chat-header {
+        padding: 10px;
+    }
+    
+    .chat-messages {
+        padding: 10px 5px;
+    }
+    
+    .chat-input-container {
+        padding: 10px;
+    }
+    
+    #message-input {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+    
+    .send-btn {
+        width: 36px;
+        height: 36px;
+    }
+    
+    /* Make form elements more touch-friendly */
+    input[type="checkbox"], input[type="radio"] {
+        min-width: 20px;
+        min-height: 20px;
+    }
+    
+    /* Performance optimizations */
+    .navbar, .sidebar, .chat-container, .profile-container, .friends-container, 
+    .notification, .modal-content, .form-wrapper, .search-results {
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    /* Fix profile picture in sidebar with stronger highlight */
+    .sidebar a[href="/profile"] img, #sidebarProfilePic {
+        border: 2px solid var(--dragon);
+        box-shadow: 0 0 5px rgba(242, 24, 217, 0.5);
+    }
+
+    /* Make sure content is scrollable */
+    .feed, .wrapper {
+        overflow-y: auto;
+    }
+    
+    /* Ensure sidebar doesn't affect scrolling of main content */
+    .sidebar.show ~ .feed, 
+    .sidebar.show ~ .wrapper {
+        overflow-y: auto;
+    }
+    
+    /* Profile image fixes */
+    #navProfilePic, #sidebarProfilePic {
+        display: block;
+        margin: 0 auto;
+    }
+}
+
+/* Extreme small devices (iPhone SE, etc.) */
+@media (max-width: 375px) {
+    .sidebar {
+        width: 40px;
+        background: rgba(26, 26, 26, 0.85); /* More opaque background for readability */
+    }
+    
+    .search {
+        width: 120px;
+    }
+    
+    .feed, .wrapper {
+        left: 0; /* Start at edge when sidebar is hidden */
+        width: 100%;
+    }
+    
+    /* Adjust position when sidebar is shown */
+    .sidebar.show ~ .feed, 
+    .sidebar.show ~ .wrapper {
+        left: 40px;
+        width: calc(100% - 40px);
+    }
+    
+    .nav-icons {
+        gap: 10px;
+    }
+    
+    /* Mobile-optimized notification container */
+    .notification-container {
+        top: 10px;
+        right: 10px;
+        max-width: calc(100vw - 60px);
+    }
+    
+    .notification {
+        min-width: 0;
+        max-width: 100%;
+        padding: 10px;
     }
 }
 
@@ -441,6 +684,8 @@ body {
     border-radius: 10px;
     padding: 20px;
     margin: 20px;
+    position: relative;
+    z-index: 2;
 }
 
 .profile-header {
@@ -561,6 +806,8 @@ body {
     background: rgba(26, 26, 26, 0.7);
     border-radius: 10px;
     overflow: hidden;
+    position: relative;
+    z-index: 2;
 }
 
 .chat-header {
@@ -771,6 +1018,76 @@ body {
     
     .message-wrapper {
         gap: 5px;
+    }
+}
+
+/* Enhanced mobile chat styling */
+@media (max-width: 600px) {
+    /* Message adjustments for smaller screens */
+    .message {
+        padding: 8px 10px;
+        font-size: 14px;
+        max-width: 90%;
+    }
+    
+    .message-wrapper {
+        margin-bottom: 10px;
+    }
+    
+    .message-profile-pic {
+        width: 25px;
+        height: 25px;
+    }
+    
+    .consecutive-message {
+        margin-top: 4px;
+    }
+    
+    .message-sender {
+        font-size: 12px;
+    }
+    
+    .message-time {
+        font-size: 10px;
+    }
+    
+    /* Make chat container take full width on mobile */
+    #chat-container, #messages-container {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    .chat-header {
+        border-radius: 0;
+    }
+    
+    /* Touch-friendly scrolling for messages */
+    .chat-messages {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Further optimize for very small screens */
+@media (max-width: 375px) {
+    .message {
+        padding: 6px 8px;
+        font-size: 13px;
+        max-width: 95%;
+    }
+    
+    /* Simplify message display */
+    .message-time {
+        display: none;
+    }
+    
+    /* Show timestamp on tap */
+    .message:active .mini-timestamp {
+        display: block;
+    }
+    
+    .mini-timestamp {
+        display: none;
     }
 }
 
@@ -987,5 +1304,116 @@ body {
     padding: 15px;
     text-align: center;
     color: #aaaaaa;
+}
+
+/* Mobile form improvements */
+@media (max-width: 810px) {
+    /* Increase spacing for touch targets */
+    input, select, textarea, button {
+        padding: 12px 15px;
+        margin-bottom: 15px;
+    }
+    
+    /* Increase button size for better touch targets */
+    button, .button, input[type="submit"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Improve form layout */
+    form {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Ensure inputs are full width */
+    input[type="text"], 
+    input[type="password"],
+    input[type="email"],
+    textarea,
+    select {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* Better scrolling experience on iOS */
+@media (pointer: coarse) {
+    .chat-messages,
+    .conversation-list,
+    .friends-container,
+    .friend-list,
+    .friend-requests {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Mobile menu toggle */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    bottom: 15px;
+    right: 15px;
+    width: 60px;
+    height: 60px;
+    background-color: var(--dragon);
+    border-radius: 50%;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 28px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.5), 0 0 8px var(--dragon);
+    z-index: 1000;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    /* Ensure touchable area extends beyond visible button */
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Create a larger invisible touch target */
+.mobile-menu-toggle::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    z-index: -1;
+}
+
+.mobile-menu-toggle:active {
+    transform: scale(0.95);
+    background-color: #d617c1;
+}
+
+@media (max-width: 600px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
+    
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+}
+
+/* Add support for browser native lazy loading */
+img {
+    loading: lazy;
+}
+
+/* Ensure content containers have correct z-index */
+.profile-container, 
+.friends-container, 
+.messages-container, 
+#chat-container,
+.account-switch-container {
+    position: relative;
+    z-index: 2;
 }
 

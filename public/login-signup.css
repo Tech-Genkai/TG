@@ -226,3 +226,80 @@ body {
 .bottom a:hover {
     text-shadow: 0 0 5px var(--dragon);
 }
+
+/* Mobile optimizations */
+@media (max-width: 600px) {
+    .form-wrapper {
+        width: 90%;
+        padding: 20px;
+        margin: 10px auto;
+    }
+    
+    .field {
+        margin-bottom: 15px;
+    }
+    
+    .inp {
+        height: 45px;
+        font-size: 16px; /* Prevent iOS zoom */
+    }
+    
+    .form-title {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+    
+    .toggle-pass {
+        right: 12px;
+    }
+    
+    .action {
+        margin-bottom: 20px;
+    }
+    
+    input[type="submit"] {
+        height: 45px;
+        font-size: 16px;
+    }
+    
+    .alternative {
+        margin: 15px 0;
+    }
+    
+    .alternative span {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+@media (max-width: 375px) {
+    .form-wrapper {
+        width: 95%;
+        padding: 15px;
+    }
+    
+    .field {
+        margin-bottom: 12px;
+    }
+    
+    .inp {
+        height: 40px;
+    }
+    
+    .form-title {
+        font-size: 22px;
+        margin-bottom: 15px;
+    }
+    
+    .action {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .alternative span {
+        width: 35px;
+        height: 35px;
+        margin: 0 5px;
+    }
+}

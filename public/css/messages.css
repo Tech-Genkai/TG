@@ -548,4 +548,97 @@
         scrollbar-width: thin;
         scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
     }
+}
+
+/* Mobile Responsive Layout */
+@media (max-width: 810px) {
+    .messages-container {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        height: calc(100vh - 80px);
+    }
+    
+    .conversations-sidebar {
+        display: none; /* Hide by default on mobile */
+    }
+    
+    .conversation-list {
+        max-height: none;
+    }
+    
+    /* Show conversations list when active */
+    .conversations-sidebar.active {
+        display: block;
+        grid-column: 1;
+        grid-row: 2;
+        height: 100%;
+        z-index: 10;
+    }
+    
+    /* Add a mobile toggle button */
+    .mobile-toggle {
+        display: flex;
+        cursor: pointer;
+        padding: 5px 10px;
+        background: rgba(26, 26, 26, 0.8);
+        border-radius: 5px;
+        margin: 5px;
+        align-items: center;
+        color: white;
+    }
+    
+    .mobile-toggle i {
+        margin-right: 5px;
+    }
+    
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 600px) {
+    .conversations-sidebar {
+        width: 100%;
+    }
+    
+    .conversation-item {
+        padding: 8px;
+    }
+    
+    .chat-header {
+        padding: 10px;
+    }
+    
+    .chat-user-pic {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .chat-user-name {
+        font-size: 16px;
+    }
+    
+    /* Improve scroll behavior */
+    .messages-wrapper {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-width: 375px) {
+    .conversation-item-content {
+        font-size: 13px;
+    }
+    
+    .conversation-item-time {
+        font-size: 10px;
+    }
+    
+    .chat-input-container {
+        padding: 8px;
+    }
 } 
