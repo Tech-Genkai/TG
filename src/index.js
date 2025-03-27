@@ -104,6 +104,30 @@ const preventCaching = (req, res, next) => {
     next();
 };
 
+// Middleware to handle pending registrations
+const handlePendingRegistration = (req, res, next) => {
+    // Skip check for authentication and registration pages
+    const path = req.path.toLowerCase();
+    if (path === '/login' || path === '/signup' || path === '/register' || 
+        path === '/logout' || path === '/account-switch' || 
+        path.startsWith('/css/') || path.startsWith('/js/') || 
+        path.startsWith('/images/')) {
+        return next();
+    }
+    
+    // Check for pending registration flag in headers (sent from client)
+    const pendingRegistration = req.headers['x-registration-pending'];
+    if (pendingRegistration === 'true') {
+        console.log('Redirecting user with pending registration to registration page');
+        return res.redirect('/register');
+    }
+    
+    next();
+};
+
+// Apply the middleware
+app.use(handlePendingRegistration);
+
 // Update routes to sendFile instead of render
 app.get("/", preventCaching, (req, res) => {
     res.sendFile(path.join(templatePath, "index.html"))
@@ -162,12 +186,20 @@ app.post("/check-username", async(req, res) => {
 
 // Update signup endpoint to include validation
 app.post("/signup", async(req, res) => {
-    const data = {
-        username: req.body.username,
-        password: req.body.password
-    }
-
     try {
+        // Check if username and password exist in the request body
+        if (!req.body || !req.body.username || !req.body.password) {
+            return res.status(400).send("Username and password are required");
+        }
+        
+        const data = {
+            username: req.body.username,
+            password: req.body.password,
+            registrationStatus: 'pending', // Mark as pending until registration is complete
+            createdAt: new Date(),
+            profilePic: '/images/default-profile.png' // Set default profile picture
+        }
+
         // Validate username length
         if (data.username.length > 15) {
             return res.status(400).send("Username must be 15 characters or less");
@@ -190,16 +222,43 @@ app.post("/signup", async(req, res) => {
             return res.status(400).send("Username is already taken");
         }
 
-        await collection.insertMany([data])
-        // Send HTML with script to set login status
+        // Create the user with pending status
+        await collection.insertMany([data]);
+        
+        // Send HTML with script to set login status and redirect
         res.send(`
             <script>
+                console.log("Signup successful, preparing to redirect...");
+                
                 // Set login status to true
                 localStorage.setItem('isLoggedIn', 'true');
+                
                 // Store username
                 localStorage.setItem('username', '${req.body.username}');
-                // Redirect to register page
-                window.location.href = '/register';
+                
+                // Set registration pending flag
+                localStorage.setItem('registrationPending', 'true');
+                
+                // Define a function to handle the redirect
+                function redirectToRegister() {
+                    console.log("Redirecting to registration page...");
+                    window.location.href = '/register';
+                }
+                
+                // Try immediate redirect
+                redirectToRegister();
+                
+                // Fallback with shorter timeout
+                setTimeout(function() {
+                    console.log("Fallback redirect triggered");
+                    window.location.replace('/register');
+                }, 500);
+                
+                // Second fallback with force reload
+                setTimeout(function() {
+                    console.log("Force reload fallback triggered");
+                    window.location.href = '/register?forcereload=' + new Date().getTime();
+                }, 1500);
             </script>
         `);
     } catch (error) {
@@ -217,6 +276,15 @@ app.post("/login", async(req, res) => {
             return res.status(401).json({ 
                 error: "Invalid Username",
                 message: "Username does not exist"
+            });
+        }
+        
+        // Check if registration is complete
+        if (user.registrationStatus === 'pending') {
+            return res.status(401).json({
+                error: "Registration Incomplete",
+                message: "Please complete your registration process first",
+                pendingRegistration: true
             });
         }
 
@@ -372,11 +440,28 @@ app.post("/api/user/profile/update", upload.single('profilePic'), async(req, res
 // Add route to handle registration form submission
 app.post("/register", upload.single('profilePic'), async(req, res) => {
     try {
+        const username = req.body.username;
+        
+        // Check if user exists and has pending status
+        const user = await collection.findOne({ username });
+        
+        if (!user) {
+            return res.status(404).send(`
+                <script>
+                    notifications.error('Registration Failed', 'User account not found. Please sign up again.');
+                    setTimeout(function() {
+                        window.location.href = '/signup';
+                    }, 3000);
+                </script>
+            `);
+        }
+        
         const data = {
             displayName: req.body.displayName,
             gender: req.body.gender,
             dateOfBirth: req.body.dateOfBirth,
-            username: req.body.username
+            registrationStatus: 'active', // Update status to active
+            profilePic: '/images/default-profile.png' // Set default profile picture
         };
 
         // Handle profile picture upload
@@ -387,14 +472,23 @@ app.post("/register", upload.single('profilePic'), async(req, res) => {
 
         // Update user profile in database
         await collection.updateOne(
-            { username: data.username },
+            { username },
             { $set: data }
         );
 
         // Send success response with redirect script
         res.send(`
             <script>
+                // Remove the pending registration flag
+                localStorage.removeItem('registrationPending');
+                
+                // Redirect to home page
                 window.location.href = '/';
+                
+                // Fallback redirect
+                setTimeout(function() {
+                    window.location.replace('/');
+                }, 1000);
             </script>
         `);
     } catch (error) {
@@ -402,6 +496,11 @@ app.post("/register", upload.single('profilePic'), async(req, res) => {
         res.status(500).send(`
             <script>
                 notifications.error('Registration Failed', 'An error occurred during registration. Please try again.');
+                
+                // Keep user on the registration page to try again
+                setTimeout(function() {
+                    window.location.reload();
+                }, 3000);
             </script>
         `);
     }
@@ -1472,6 +1571,28 @@ app.get('/api/friends/:username', async (req, res) => {
         res.status(500).json({ error: 'Error getting friends list' });
     }
 });
+
+// Add a cleanup task for pending registrations (could be run periodically)
+// This would remove accounts that never completed registration
+const cleanupPendingRegistrations = async () => {
+    try {
+        const oneDayAgo = new Date();
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+        
+        const result = await collection.deleteMany({
+            registrationStatus: 'pending',
+            createdAt: { $lt: oneDayAgo }
+        });
+        
+        console.log(`Cleaned up ${result.deletedCount} pending registrations`);
+    } catch (error) {
+        console.error('Error cleaning up pending registrations:', error);
+    }
+};
+
+// Run the cleanup on server start and then every 24 hours
+cleanupPendingRegistrations();
+setInterval(cleanupPendingRegistrations, 24 * 60 * 60 * 1000);
 
 // Update listen method to use the HTTP server instead of Express app
 const PORT = process.env.PORT || 4000;

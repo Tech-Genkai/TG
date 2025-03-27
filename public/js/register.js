@@ -1,7 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Wait for notifications to be available
-    if (typeof notifications === 'undefined') {
-        console.error('Notifications system not loaded');
+    console.log("Register page loaded");
+    
+    // Check if the user should be on this page
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const isPendingRegistration = localStorage.getItem('registrationPending') === 'true';
+    const username = localStorage.getItem('username');
+    
+    console.log("Auth status:", { isLoggedIn, isPendingRegistration, username });
+    
+    if (!isLoggedIn || !isPendingRegistration || !username) {
+        console.warn("User shouldn't be on registration page, redirecting...");
+        window.location.replace('/signup');
         return;
     }
 
@@ -139,21 +148,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            console.log('Submitting registration form...');
             const response = await fetch('/register', {
                 method: 'POST',
                 body: formData
             });
 
             if (!response.ok) {
+                console.error('Registration failed with status:', response.status);
                 throw new Error('Registration failed');
             }
 
             // Get the response text and execute the redirect script
             const result = await response.text();
-            const scriptContent = result.match(/<script>([\s\S]*?)<\/script>/)[1];
-            eval(scriptContent);
+            console.log('Registration successful, processing response');
+            
+            try {
+                const scriptMatch = result.match(/<script>([\s\S]*?)<\/script>/);
+                if (scriptMatch && scriptMatch[1]) {
+                    console.log('Script content found, executing...');
+                    const scriptContent = scriptMatch[1];
+                    eval(scriptContent);
+                } else {
+                    console.warn('No script found in response, using fallback redirect');
+                    // Remove registration pending flag
+                    localStorage.removeItem('registrationPending');
+                    // Redirect to home page
+                    window.location.href = '/';
+                }
+            } catch (scriptError) {
+                console.error('Error executing redirect script:', scriptError);
+                // Fallback redirect
+                localStorage.removeItem('registrationPending');
+                window.location.replace('/');
+            }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Registration error:', error);
             notifications.error(
                 'Registration Failed',
                 'An error occurred during registration. Please try again.'

@@ -4,18 +4,32 @@ function isLoggedIn() {
     return localStorage.getItem('isLoggedIn') === 'true';
 }
 
-// Redirect if not logged in
+// Check if registration is pending
+function isRegistrationPending() {
+    return localStorage.getItem('registrationPending') === 'true';
+}
+
+// Redirect if not logged in or if registration is pending but not on registration page
 function checkLoginStatus() {
     // If we're not on the login or signup page and user is not logged in, redirect to login
     const currentPage = window.location.pathname;
-    const isLoginPage = currentPage === '/login' || currentPage === '/signup';
+    const isLoginPage = currentPage === '/login' || currentPage === '/signup' || currentPage === '/register';
     const isAccountSwitchPage = currentPage === '/account-switch';
     
+    // First check if logged in
     if (!isLoginPage && !isAccountSwitchPage && !isLoggedIn()) {
         // Force redirect to login page
         window.location.replace('/login');
         return false;
     }
+    
+    // Then check if registration is pending but we're not on registration page
+    if (isLoggedIn() && isRegistrationPending() && currentPage !== '/register') {
+        // Force redirect to registration page
+        window.location.replace('/register');
+        return false;
+    }
+    
     return true;
 }
 
@@ -250,13 +264,44 @@ function initializeSearch() {
     }
 }
 
-// Add search functionality to the search bar
+// Setup headers for API requests
+function setupHeaders() {
+    // Add authorization headers to all fetch requests
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        // Create headers if they don't exist
+        if (!options.headers) {
+            options.headers = {};
+        }
+        
+        // Add current user to headers if logged in
+        const username = localStorage.getItem('username');
+        if (username) {
+            options.headers['x-username'] = username;
+        }
+        
+        // Add registration pending flag if applicable
+        if (isRegistrationPending()) {
+            options.headers['x-registration-pending'] = 'true';
+        }
+        
+        return originalFetch(url, options);
+    };
+}
+
+// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize search functionality
-    initializeSearch();
+    // Check login status - this will redirect if needed
+    if (!checkLoginStatus()) return;
     
-    // Set active page in sidebar
+    // Setup headers for API requests
+    setupHeaders();
+    
+    // Set active page in navigation
     setActivePage();
+    
+    // Initialize search if present
+    initializeSearch();
 });
 
 // Run on page load
