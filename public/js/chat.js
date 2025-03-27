@@ -165,10 +165,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add profile picture
         const profilePic = document.createElement('div');
         profilePic.className = 'message-profile-pic';
+        
+        // Make profile picture clickable
+        const profilePicLink = document.createElement('a');
+        profilePicLink.href = `/user/${msg.username}`;
+        profilePicLink.title = `View ${msg.displayName || msg.username}'s profile`;
+        
         const profileImg = document.createElement('img');
         profileImg.src = msg.profilePic || '/images/default-profile.png';
         profileImg.alt = msg.displayName || msg.username;
-        profilePic.appendChild(profileImg);
+        
+        profilePicLink.appendChild(profileImg);
+        profilePic.appendChild(profilePicLink);
         
         // Create message content container
         const messageContent = document.createElement('div');
@@ -178,10 +186,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const header = document.createElement('div');
         header.className = 'message-header';
         
-        // Add sender name with appropriate alignment
-        const sender = document.createElement('span');
+        // Add sender name with appropriate alignment and make it clickable
+        const sender = document.createElement('a'); // Change from span to anchor
         sender.className = 'message-sender';
         sender.textContent = msg.displayName || msg.username; // Use display name if available
+        sender.href = `/user/${msg.username}`; // Link to user profile
+        sender.title = `View ${msg.displayName || msg.username}'s profile`;
         
         // Add timestamp if available
         let timestamp;

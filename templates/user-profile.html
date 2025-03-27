@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <title>TG - User Profile</title>
+    <style>
+        .user-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .action-btn {
+            padding: 10px 18px;
+            border-radius: 20px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: linear-gradient(to right, #4776e6, #8e54e9);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(71, 118, 230, 0.3);
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(71, 118, 230, 0.4);
+        }
+        
+        .action-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .action-btn i {
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg"></div>
+    
+    <nav class="navbar">
+        <div class="Org-logo">
+            <img src="/images/logo.png" alt="Site">
+            <h4>Tech Genkai</h4>
+        </div>
+        <div class="search-bar">
+            <input type="text" class="search" placeholder="Search on site">
+        </div>
+        <div class="nav-icons">
+            <a href="/messages"><img src="/images/message-icon.png" alt="Messages"></a>
+            <a href="#"><img src="/images/bell-icon.png" alt="Notifications"></a>
+            <a href="/profile"><img src="/images/default-profile.png" alt="Profile" id="navProfilePic"></a>
+        </div>
+    </nav>
+
+    <div class="sidebar">
+        <h2>Tech Genkai</h2>
+        <a href="/"><img src="/images/home-icon.svg" alt="Home">Home</a>
+        <a href="/messages"><img src="/images/message-icon.png" alt="Messages">Messages</a>
+        <a href="#"><img src="/images/bell-icon.png" alt="Notifications">Notifications</a>
+        <a href="/profile"><img src="/images/default-profile.png" alt="Profile" id="sidebarProfilePic"></a>
+        <a href="/logout"><img src="/images/profile-icon.png" alt="Log Out">Log Out</a>
+    </div>
+    
+    <div class="wrapper">
+        <div class="profile-container">
+            <div class="profile-header">
+                <div class="profile-picture">
+                    <img src="/images/default-profile.png" alt="Profile Picture" id="userProfilePic">
+                </div>
+                <div class="profile-info">
+                    <h1 id="userDisplayName">Display Name</h1>
+                    <p id="userUsername">@username</p>
+                </div>
+            </div>
+            
+            <div class="profile-details">
+                <div class="detail-item">
+                    <label>Gender</label>
+                    <p id="userGender">Not specified</p>
+                </div>
+                <div class="detail-item">
+                    <label>Date of Birth</label>
+                    <p id="userDob">Not specified</p>
+                </div>
+                <div class="user-actions">
+                    <button id="sendMessageBtn" class="action-btn">
+                        <i class="bi bi-chat-dots-fill"></i>
+                        Send Message
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/notifications.js"></script>
+    <script src="/js/profileManager.js"></script>
+    <script src="/js/main.js"></script>
+    <script>
+        // Initialize only the current user's profile in navbar and sidebar
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Get current user's profile data
+            const userData = await profileManager.fetchProfileData();
+            if (userData) {
+                // Update only navbar and sidebar profile pictures
+                const navProfilePic = document.getElementById('navProfilePic');
+                const sidebarProfilePic = document.getElementById('sidebarProfilePic');
+                
+                if (navProfilePic) {
+                    navProfilePic.src = userData.profilePic || '/images/default-profile.png';
+                    navProfilePic.alt = userData.displayName || 'Profile';
+                    navProfilePic.classList.add('round-profile');
+                }
+                
+                if (sidebarProfilePic) {
+                    sidebarProfilePic.src = userData.profilePic || '/images/default-profile.png';
+                    sidebarProfilePic.alt = userData.displayName || 'Profile';
+                }
+                
+                // Update sidebar profile link text
+                const profileLink = document.querySelector('.sidebar a[href="/profile"]');
+                if (profileLink && sidebarProfilePic) {
+                    profileLink.innerHTML = '';
+                    profileLink.appendChild(sidebarProfilePic);
+                    profileLink.appendChild(document.createTextNode(userData.displayName || 'Profile'));
+                }
+            }
+        });
+    </script>
+    <script src="/js/userProfile.js"></script>
+</body>
+
+</html> 

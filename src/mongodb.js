@@ -62,10 +62,58 @@ const MessageSchema = new mongoose.Schema({
     }
 })
 
+// Direct message schema for private messages
+const DirectMessageSchema = new mongoose.Schema({
+    sender: {
+        type: String,
+        required: true,
+        ref: 'collection1'
+    },
+    recipient: {
+        type: String,
+        required: true,
+        ref: 'collection1'
+    },
+    text: {
+        type: String,
+        required: true
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now
+    },
+    read: {
+        type: Boolean,
+        default: false
+    }
+})
+
+// Conversation schema to track message threads between users
+const ConversationSchema = new mongoose.Schema({
+    participants: {
+        type: [String],
+        required: true
+    },
+    lastMessage: {
+        type: String
+    },
+    lastMessageTime: {
+        type: Date
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+})
+
 const collection = new mongoose.model("collection1", LoginSchema)
 const Message = new mongoose.model("Message", MessageSchema)
+const DirectMessage = new mongoose.model("DirectMessage", DirectMessageSchema)
+const Conversation = new mongoose.model("Conversation", ConversationSchema)
 
 module.exports = {
     collection,
-    Message
+    Message,
+    DirectMessage,
+    Conversation
 }

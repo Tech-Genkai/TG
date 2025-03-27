@@ -1,0 +1,637 @@
+/* Messages page styling */
+.messaging-container {
+    display: flex;
+    position: absolute;
+    top: 60px;
+    left: 240px;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(22, 22, 28, 0.5);
+    backdrop-filter: blur(10px);
+    border-radius: 10px;
+    margin: 20px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Conversations list styling */
+.conversations-list {
+    width: 300px;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(15, 15, 22, 0.8);
+}
+
+.conversations-header {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: rgba(20, 20, 28, 0.9);
+}
+
+.conversations-header h3 {
+    margin: 0;
+    color: #fff;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+.search-conversations {
+    padding: 10px 15px;
+    position: relative;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: rgba(12, 12, 18, 0.6);
+    box-sizing: border-box;
+}
+
+.search-conversations i {
+    position: absolute;
+    left: 20px;
+    top: 18px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+}
+
+.search-conversations input {
+    width: 100%;
+    padding: 8px 8px 8px 28px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-sizing: border-box;
+    font-size: 13px;
+}
+
+.search-conversations input:focus {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.conversations {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
+}
+
+.conversation-item {
+    display: flex;
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.conversation-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.conversation-item.active {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-left: 3px solid rgba(255, 255, 255, 0.5);
+}
+
+.conversation-profile-pic {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 15px;
+    position: relative;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.conversation-profile-pic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.conversation-details {
+    flex: 1;
+    overflow: hidden;
+}
+
+.conversation-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.conversation-name {
+    color: #fff;
+    font-weight: 500;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.conversation-time {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.conversation-last-message {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.unread-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    background-color: #dc3545;
+    border-radius: 50%;
+    color: white;
+    font-size: 0.7rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Message view styling */
+.message-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: rgba(18, 18, 25, 0.4);
+}
+
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-header {
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background-color: rgba(20, 20, 28, 0.9);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: #fff;
+    transition: opacity 0.2s;
+}
+
+.user-info:hover {
+    opacity: 0.9;
+}
+
+.user-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 15px;
+    object-fit: cover;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-details h3 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 15px 15px 15px 15px;
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(15, 15, 22, 0.3);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
+    box-sizing: border-box;
+}
+
+/* Empty state styling */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 20px;
+    text-align: center;
+    background-color: rgba(18, 18, 25, 0.4);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    color: rgba(255, 255, 255, 0.3);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.5; transform: scale(0.95); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+    100% { opacity: 0.5; transform: scale(0.95); }
+}
+
+.empty-state h3 {
+    margin: 0 0 10px 0;
+    color: #fff;
+    font-size: 1.5rem;
+    letter-spacing: 0.5px;
+}
+
+.empty-state p {
+    margin: 0 0 20px 0;
+    text-align: center;
+    max-width: 280px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Loading spinner */
+.loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.loading-spinner i {
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+.loading-messages {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Message styling */
+.message-container {
+    margin-bottom: 15px;
+    width: 100%;
+}
+
+.message-wrapper {
+    display: flex;
+    max-width: 80%;
+}
+
+.message-wrapper.own {
+    margin-left: auto;
+    flex-direction: row-reverse;
+}
+
+.message-profile-pic {
+    width: 35px;
+    height: 35px;
+    margin: 0 10px;
+}
+
+.message-profile-pic img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.message-content {
+    flex: 1;
+}
+
+.message-header {
+    display: flex;
+    margin-bottom: 5px;
+    align-items: center;
+}
+
+.message-sender {
+    font-weight: 500;
+    color: #fff;
+    text-decoration: none;
+    opacity: 0.9;
+    transition: opacity 0.2s;
+}
+
+.message-sender:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.message-time {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    margin-left: 8px;
+}
+
+.message {
+    padding: 10px 12px;
+    border-radius: 5px;
+    display: inline-block;
+    max-width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    margin-bottom: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.message-other {
+    background-color: rgba(35, 35, 45, 0.7);
+    color: #fff;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.message-own {
+    background-color: rgba(45, 45, 55, 0.8);
+    color: white;
+    border-radius: 5px;
+    float: right;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.consecutive-message {
+    margin-top: 2px;
+    border-radius: 5px;
+}
+
+/* Chat input styling */
+.chat-input-container {
+    display: flex;
+    padding: 15px;
+    background-color: rgba(20, 20, 28, 0.8);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#message-input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) inset;
+    margin-right: 10px;
+}
+
+#message-input:focus {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.send-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.send-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.send-btn:active {
+    transform: scale(0.95);
+}
+
+.error-message {
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.7);
+    background-color: rgba(220, 53, 69, 0.1);
+    border-radius: 5px;
+    margin: 10px;
+    border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.error-message a, .error-message button {
+    color: #ff80ab;
+    margin-left: 5px;
+    cursor: pointer;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+}
+
+.no-conversations {
+    text-align: center;
+    padding: 30px 15px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.no-conversations p {
+    margin: 5px 0;
+}
+
+.no-results, .error-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.no-results i, .error-message i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    opacity: 0.6;
+}
+
+.no-results p, .error-message p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.error-message {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-radius: 5px;
+    margin: 10px 0;
+    border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+.error-message i {
+    color: rgba(220, 53, 69, 0.8);
+}
+
+.conversations .no-results {
+    text-align: center;
+    padding: 20px 10px;
+    color: rgba(255, 255, 255, 0.7);
+    background-color: transparent;
+    margin: 10px 0;
+}
+
+.conversations .no-results i {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.conversations .no-results p {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0 15px;
+}
+
+.mobile-close-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 15px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.mobile-close-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.mobile-close-btn:active {
+    transform: scale(0.98);
+}
+
+/* Add consistent scrollbar styling */
+/* Apply scrollbar styling to all scrollable elements */
+.conversations,
+.chat-messages,
+.search-results {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
+}
+
+/* Webkit browsers (Chrome, Safari, newer Edge) */
+.conversations::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar,
+.search-results::-webkit-scrollbar {
+    width: 14px;
+}
+
+.conversations::-webkit-scrollbar-track,
+.chat-messages::-webkit-scrollbar-track,
+.search-results::-webkit-scrollbar-track {
+    background: rgba(26, 26, 26, 0.7);
+    border-radius: 10px;
+    margin: 2px 0;
+}
+
+.conversations::-webkit-scrollbar-thumb,
+.chat-messages::-webkit-scrollbar-thumb,
+.search-results::-webkit-scrollbar-thumb {
+    background-color: rgba(242, 24, 217, 0.7);
+    border-radius: 10px;
+    border: 2px solid rgba(26, 26, 26, 0.7);
+    min-height: 40px;
+}
+
+.conversations::-webkit-scrollbar-thumb:hover,
+.chat-messages::-webkit-scrollbar-thumb:hover,
+.search-results::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(242, 24, 217, 0.9);
+}
+
+/* Also style any potential scrollable containers in modals or other areas */
+* {
+    /* Standard property supported by newer browsers */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
+}
+
+/* Ensure proper padding for scrollbar spaces */
+.conversations, .chat-messages {
+    padding-right: 4px; /* Add slight padding to avoid content touching scrollbar */
+}
+
+/* Add Firefox-only fixes if needed for scrollbar consistency */
+@-moz-document url-prefix() {
+    .conversations, .chat-messages {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
+    }
+}
+
+/* Apply scrollbar to any future search result containers */
+.search-results,
+div[class*="scroll"],
+div[class*="overflow-y-auto"],
+div[class*="overflow-auto"] {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
+}
+
+/* Ensure webkit scrollbars are consistent across all containers */
+*::-webkit-scrollbar {
+    width: 14px;
+}
+
+*::-webkit-scrollbar-track {
+    background: rgba(26, 26, 26, 0.7);
+    border-radius: 10px;
+    margin: 2px 0;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: rgba(242, 24, 217, 0.7);
+    border-radius: 10px;
+    border: 2px solid rgba(26, 26, 26, 0.7);
+    min-height: 40px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(242, 24, 217, 0.9);
+} 

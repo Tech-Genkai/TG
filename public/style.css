@@ -46,6 +46,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    position: relative;
 }
 
 .Org-logo{
@@ -482,7 +483,33 @@ body {
 }
 
 .edit-profile-btn:hover {
-    transform: scale(1.05);
+    background-color: #f22bd1;
+    box-shadow: 0 0 10px var(--dragon);
+}
+
+/* User profile actions */
+.user-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    background-color: #232323;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 5px rgba(242, 24, 217, 0.3);
+}
+
+.action-btn:hover {
+    background-color: #f22bd1;
     box-shadow: 0 0 10px var(--dragon);
 }
 
@@ -518,22 +545,29 @@ body {
     flex-direction: column;
     gap: 2px;
     max-height: calc(100% - 130px);
-    scrollbar-width: thin;
-    scrollbar-color: rgba(242, 24, 217, 0.5) rgba(26, 26, 26, 0.5);
+    scrollbar-width: auto;
+    scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
 }
 
 .chat-messages::-webkit-scrollbar {
-    width: 6px;
+    width: 14px;
 }
 
 .chat-messages::-webkit-scrollbar-track {
-    background: rgba(26, 26, 26, 0.5);
+    background: rgba(26, 26, 26, 0.7);
     border-radius: 10px;
+    margin: 2px 0;
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-    background-color: rgba(242, 24, 217, 0.5);
+    background-color: rgba(242, 24, 217, 0.7);
     border-radius: 10px;
+    border: 2px solid rgba(26, 26, 26, 0.7);
+    min-height: 40px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(242, 24, 217, 0.9);
 }
 
 /* Basic message container styles */
@@ -636,6 +670,20 @@ body {
     flex-shrink: 0;
     border: 2px solid rgba(51, 51, 51, 0.7);
     box-shadow: 0 0 3px rgba(242, 24, 217, 0.4);
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.message-profile-pic:hover {
+    border-color: var(--dragon);
+    box-shadow: 0 0 8px rgba(242, 24, 217, 0.7);
+    transform: scale(1.05);
+}
+
+.message-profile-pic a {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .message-profile-pic img {
@@ -813,5 +861,91 @@ body {
     border-radius: 10px;
     display: inline-block;
     animation: fadeIn 0.3s ease-out;
+}
+
+.message-sender {
+    font-weight: bold;
+    margin-right: 8px;
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.message-sender:hover {
+    color: var(--dragon);
+    text-shadow: 0 0 5px rgba(242, 24, 217, 0.5);
+}
+
+/* Search results dropdown */
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #1a1a1a;
+    border-radius: 10px;
+    margin-top: 5px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5), 0 0 5px var(--dragon);
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.search-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.search-results::-webkit-scrollbar-track {
+    background: #111111;
+    border-radius: 10px;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 10px;
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    text-decoration: none;
+    color: #fff;
+    transition: all 0.2s ease;
+}
+
+.search-result-item:hover {
+    background: #333333;
+}
+
+.search-result-img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 15px;
+    object-fit: cover;
+    border: 1px solid #ffffff50;
+}
+
+.search-result-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-result-name {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.search-result-username {
+    font-size: 14px;
+    color: #aaaaaa;
+}
+
+.no-results {
+    padding: 15px;
+    text-align: center;
+    color: #aaaaaa;
 }
 

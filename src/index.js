@@ -1,7 +1,7 @@
 const express = require('express')
 const app = express()
 const path = require('path')
-const { collection, Message } = require("./mongodb")
+const { collection, Message, DirectMessage, Conversation } = require("./mongodb")
 const multer = require('multer')
 const crypto = require('crypto')
 const http = require('http')
@@ -80,6 +80,11 @@ app.get("/profile", (req, res) => {
 // Add a route for /register that serves the register page
 app.get("/register", (req, res) => {
     res.sendFile(path.join(templatePath, "register.html"))
+})
+
+// Add route for viewing other user profiles
+app.get("/user/:username", (req, res) => {
+    res.sendFile(path.join(templatePath, "user-profile.html"))
 })
 
 // Add endpoint to check username availability
@@ -324,6 +329,105 @@ app.get("/api/chat/history", async(req, res) => {
     }
 });
 
+// Add endpoint to get specific user profile data
+app.get("/api/user/:username/profile", async(req, res) => {
+    try {
+        // Get current username and target username
+        const currentUsername = req.headers['x-username'];
+        const targetUsername = req.params.username;
+        
+        if (!currentUsername) {
+            return res.status(401).json({ error: "You must be logged in to view profiles" });
+        }
+
+        const user = await collection.findOne({ username: targetUsername });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Format gender with first letter capitalized
+        const formattedGender = user.gender 
+            ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) 
+            : 'Not specified';
+            
+        // Return user profile data
+        res.json({
+            username: user.username,
+            displayName: user.displayName || user.username,
+            profilePic: user.profilePic || '/images/default-profile.png',
+            gender: formattedGender,
+            dob: user.dateOfBirth ? user.dateOfBirth : 'Not specified',
+            isCurrentUser: currentUsername === targetUsername
+        });
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        res.status(500).json({ error: "Error fetching profile data" });
+    }
+});
+
+// Add endpoint to search for users
+app.get("/api/search/users", async(req, res) => {
+    try {
+        const query = req.query.q;
+        console.log('User search query:', query);
+        
+        if (!query || query.trim().length === 0) {
+            console.log('Empty search query, returning empty results');
+            return res.json({ users: [], message: "Please enter a search term" });
+        }
+        
+        // Get current username from headers
+        const currentUsername = req.headers['x-username'];
+        if (!currentUsername) {
+            console.warn('User search attempted without authentication');
+            return res.status(401).json({ 
+                error: "User not authenticated", 
+                message: "You must be logged in to search for users" 
+            });
+        }
+        
+        console.log(`User ${currentUsername} searching for: "${query}"`);
+        
+        // Search for users matching the query in username or displayName
+        // Use case-insensitive regex search
+        const users = await collection.find({
+            $or: [
+                { username: { $regex: query, $options: "i" } },
+                { displayName: { $regex: query, $options: "i" } }
+            ]
+        }).limit(10).exec();
+        
+        console.log(`Found ${users.length} users matching query '${query}'`);
+        
+        // Format the results
+        const formattedUsers = users.map(user => ({
+            username: user.username,
+            displayName: user.displayName || user.username,
+            profilePic: user.profilePic || '/images/default-profile.png',
+            isCurrentUser: user.username === currentUsername
+        }));
+        
+        // Send appropriate response based on results
+        if (formattedUsers.length === 0) {
+            return res.json({ 
+                users: [], 
+                message: `No users found matching "${query}"` 
+            });
+        }
+        
+        res.json({ 
+            users: formattedUsers,
+            message: `Found ${formattedUsers.length} user(s)` 
+        });
+    } catch (error) {
+        console.error('Error searching users:', error);
+        res.status(500).json({ 
+            error: "Error searching users",
+            message: "An error occurred while searching for users. Please try again."
+        });
+    }
+});
+
 // Socket.io connection handling
 io.use(async (socket, next) => {
     const username = socket.handshake.auth.username;
@@ -418,6 +522,9 @@ io.on('connection', async (socket) => {
         console.error('Error sending chat history:', error);
     }
     
+    // Socket rooms for private messaging
+    socket.join(username); // Join a personal room for receiving private messages
+    
     // Handle chat messages
     socket.on('chat message', async (msg) => {
         const messageData = {
@@ -446,10 +553,325 @@ io.on('connection', async (socket) => {
         io.emit('chat message', messageData);
     });
     
+    // Handle private messages
+    socket.on('private message', async (data) => {
+        const { recipient, text } = data;
+        
+        if (!recipient || !text.trim()) {
+            console.log('Invalid private message data:', data);
+            return socket.emit('error', { message: 'Invalid message data' });
+        }
+        
+        try {
+            console.log(`Private message from ${socket.username} to ${recipient}: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`);
+            
+            // Get recipient user
+            const recipientUser = await collection.findOne({ username: recipient });
+            if (!recipientUser) {
+                console.warn(`Recipient not found: ${recipient}`);
+                return socket.emit('error', { message: 'Recipient user not found' });
+            }
+            
+            // Create the message data
+            const messageData = {
+                sender: socket.username,
+                senderDisplayName: socket.displayName,
+                senderProfilePic: socket.profilePic,
+                recipient: recipient,
+                recipientDisplayName: recipientUser.displayName || recipient,
+                recipientProfilePic: recipientUser.profilePic || '/images/default-profile.png',
+                text: text,
+                timestamp: new Date()
+            };
+            
+            // Save to database
+            const newDirectMessage = new DirectMessage({
+                sender: messageData.sender,
+                recipient: messageData.recipient,
+                text: messageData.text,
+                timestamp: messageData.timestamp,
+                read: false
+            });
+            
+            await newDirectMessage.save();
+            console.log(`Saved direct message with ID: ${newDirectMessage._id}`);
+            
+            // Update or create conversation
+            const participantsArray = [socket.username, recipient].sort();
+            let conversation = await Conversation.findOne({
+                participants: { $all: participantsArray, $size: 2 }
+            });
+            
+            if (conversation) {
+                // Update existing conversation
+                console.log(`Updating existing conversation: ${conversation._id}`);
+                conversation.lastMessage = text;
+                conversation.lastMessageTime = messageData.timestamp;
+                conversation.updatedAt = messageData.timestamp;
+                await conversation.save();
+            } else {
+                // Create new conversation
+                console.log(`Creating new conversation for users: ${participantsArray.join(', ')}`);
+                conversation = new Conversation({
+                    participants: participantsArray,
+                    lastMessage: text,
+                    lastMessageTime: messageData.timestamp,
+                    updatedAt: messageData.timestamp
+                });
+                await conversation.save();
+                console.log(`Created new conversation with ID: ${conversation._id}`);
+            }
+            
+            // Add message ID to the message data for the client
+            messageData.id = newDirectMessage._id;
+            
+            // Emit to sender
+            console.log(`Emitting private message to sender: ${socket.username}`);
+            socket.emit('private message', {
+                ...messageData,
+                isSelf: true
+            });
+            
+            // Emit to recipient if online
+            console.log(`Emitting private message to recipient: ${recipient}`);
+            socket.to(recipient).emit('private message', {
+                ...messageData,
+                isSelf: false
+            });
+            
+            // Also emit conversation update
+            const conversationData = {
+                id: conversation._id,
+                participants: conversation.participants,
+                lastMessage: conversation.lastMessage,
+                lastMessageTime: conversation.lastMessageTime,
+                updatedAt: conversation.updatedAt
+            };
+            
+            console.log('Emitting conversation update to both users');
+            socket.emit('conversation update', conversationData);
+            socket.to(recipient).emit('conversation update', conversationData);
+            
+        } catch (error) {
+            console.error('Error sending private message:', error);
+            socket.emit('error', { message: 'Error sending message: ' + error.message });
+        }
+    });
+    
+    // Handle marking messages as read
+    socket.on('mark messages read', async (data) => {
+        const { conversationWith } = data;
+        
+        if (!conversationWith) {
+            console.warn('Invalid mark messages read data:', data);
+            return;
+        }
+        
+        try {
+            console.log(`Marking messages from ${conversationWith} to ${socket.username} as read`);
+            
+            const updateResult = await DirectMessage.updateMany(
+                { sender: conversationWith, recipient: socket.username, read: false },
+                { $set: { read: true } }
+            );
+            
+            console.log(`Marked ${updateResult.modifiedCount} messages as read`);
+            
+            // Notify the other user that their messages were read
+            if (updateResult.modifiedCount > 0) {
+                console.log(`Notifying ${conversationWith} that messages were read by ${socket.username}`);
+                socket.to(conversationWith).emit('messages read', { 
+                    by: socket.username,
+                    count: updateResult.modifiedCount
+                });
+            }
+        } catch (error) {
+            console.error('Error marking messages as read:', error);
+            socket.emit('error', { message: 'Error marking messages as read' });
+        }
+    });
+    
     // Handle disconnection
     socket.on('disconnect', async () => {
         console.log(`User disconnected: ${displayName} (${username})`);
     });
+});
+
+// Add routes for direct messaging
+app.get('/messages/:username', (req, res) => {
+    res.sendFile(path.join(templatePath, 'private-messages.html'));
+});
+
+// Add route for the main messages page
+app.get('/messages', (req, res) => {
+    res.sendFile(path.join(templatePath, 'private-messages.html'));
+});
+
+// Add endpoint to get conversation list
+app.get('/api/conversations', async (req, res) => {
+    try {
+        const username = req.headers['x-username'];
+        if (!username) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        console.log(`Fetching conversations for user: ${username}`);
+        
+        // Find all conversations where the user is a participant
+        const conversations = await Conversation.find({
+            participants: username
+        }).sort({ updatedAt: -1 }).limit(50);
+        
+        console.log(`Found ${conversations.length} conversations`);
+        
+        // Get the other participant details for each conversation
+        const conversationsWithDetails = await Promise.all(
+            conversations.map(async (conversation) => {
+                // Determine the other participant
+                const otherParticipant = conversation.participants.find(p => p !== username);
+                
+                if (!otherParticipant) {
+                    console.warn(`No other participant found in conversation: ${conversation._id}`);
+                    return null;
+                }
+                
+                // Get other participant's details
+                const user = await collection.findOne({ username: otherParticipant });
+                
+                // Count unread messages
+                const unreadCount = await DirectMessage.countDocuments({
+                    sender: otherParticipant,
+                    recipient: username,
+                    read: false
+                });
+                
+                return {
+                    id: conversation._id,
+                    withUser: otherParticipant,
+                    withUserDisplayName: user ? (user.displayName || otherParticipant) : otherParticipant,
+                    withUserProfilePic: user ? (user.profilePic || '/images/default-profile.png') : '/images/default-profile.png',
+                    lastMessage: conversation.lastMessage || 'Start a conversation',
+                    lastMessageTime: conversation.lastMessageTime || conversation.updatedAt,
+                    updatedAt: conversation.updatedAt,
+                    unreadCount: unreadCount
+                };
+            })
+        );
+        
+        // Filter out any null values and send response
+        const validConversations = conversationsWithDetails.filter(conv => conv !== null);
+        res.json({ conversations: validConversations });
+    } catch (error) {
+        console.error('Error fetching conversations:', error);
+        res.status(500).json({ error: 'Error fetching conversations' });
+    }
+});
+
+// Add endpoint to get chat history between two users
+app.get('/api/messages/:username', async (req, res) => {
+    try {
+        const currentUser = req.headers['x-username'];
+        const otherUser = req.params.username;
+        
+        if (!currentUser) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        
+        console.log(`Fetching messages between ${currentUser} and ${otherUser}`);
+        
+        // Validate other user exists
+        const user = await collection.findOne({ username: otherUser });
+        if (!user) {
+            console.warn(`User not found: ${otherUser}`);
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        // Get messages exchanged between the two users (in both directions)
+        const messages = await DirectMessage.find({
+            $or: [
+                { sender: currentUser, recipient: otherUser },
+                { sender: otherUser, recipient: currentUser }
+            ]
+        }).sort({ timestamp: 1 }).limit(100);
+        
+        console.log(`Found ${messages.length} messages`);
+        
+        // Get profile information for both users
+        const currentUserProfile = await collection.findOne({ username: currentUser });
+        const otherUserProfile = user;
+        
+        // Format the messages for the client
+        const formattedMessages = messages.map(msg => {
+            const isSelf = msg.sender === currentUser;
+            const sender = isSelf ? currentUserProfile : otherUserProfile;
+            
+            return {
+                id: msg._id,
+                sender: msg.sender,
+                senderDisplayName: sender ? (sender.displayName || msg.sender) : msg.sender,
+                senderProfilePic: sender ? (sender.profilePic || '/images/default-profile.png') : '/images/default-profile.png',
+                recipient: msg.recipient,
+                text: msg.text,
+                timestamp: msg.timestamp,
+                read: msg.read,
+                isSelf: isSelf
+            };
+        });
+        
+        // Mark messages as read
+        const updateResult = await DirectMessage.updateMany(
+            { sender: otherUser, recipient: currentUser, read: false },
+            { $set: { read: true } }
+        );
+        
+        console.log(`Marked ${updateResult.modifiedCount} messages as read`);
+        
+        // Return messages and user profile info
+        res.json({
+            messages: formattedMessages,
+            user: {
+                username: otherUser,
+                displayName: otherUserProfile.displayName || otherUser,
+                profilePic: otherUserProfile.profilePic || '/images/default-profile.png'
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching messages:', error);
+        res.status(500).json({ error: 'Error fetching messages', details: error.message });
+    }
+});
+
+// Add a route to start a conversation from user profile
+app.get('/messages/new/:username', async (req, res) => {
+    try {
+        const targetUsername = req.params.username;
+        const currentUsername = req.headers['x-username'] || req.query.from;
+        
+        if (!currentUsername) {
+            // If not authenticated, redirect to login page
+            return res.redirect('/login');
+        }
+        
+        // Check if the target user exists
+        const targetUser = await collection.findOne({ username: targetUsername });
+        if (!targetUser) {
+            return res.status(404).send('User not found');
+        }
+        
+        // Check if current user exists
+        const currentUser = await collection.findOne({ username: currentUsername });
+        if (!currentUser) {
+            return res.status(401).send('Invalid user');
+        }
+        
+        console.log(`Starting conversation between ${currentUsername} and ${targetUsername}`);
+        
+        // Redirect to the messages page with the target user
+        res.redirect(`/messages/${targetUsername}`);
+    } catch (error) {
+        console.error('Error creating conversation:', error);
+        res.status(500).send('An error occurred');
+    }
 });
 
 // Update listen method to use the HTTP server instead of Express app
