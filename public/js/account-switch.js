@@ -54,34 +54,40 @@ function initializeAccountSwitcher() {
 
 // Load active and recent accounts
 function loadAccounts() {
-    const activeAccountsContainer = document.getElementById('activeAccounts');
-    const recentAccountsContainer = document.getElementById('recentAccounts');
+    const accountsListContainer = document.getElementById('accountsList');
     
-    if (!activeAccountsContainer || !recentAccountsContainer) return;
+    if (!accountsListContainer) return;
     
     // Get accounts from localStorage
     const activeAccounts = getActiveAccounts();
     const recentAccounts = getRecentAccounts();
+    const currentUsername = localStorage.getItem('username');
     
-    // Display active accounts
-    if (activeAccounts.length > 0) {
-        activeAccountsContainer.innerHTML = '';
-        activeAccounts.forEach(account => {
-            activeAccountsContainer.appendChild(createAccountItem(account, true));
-        });
-    } else {
-        activeAccountsContainer.innerHTML = '<div class="no-accounts">No active accounts</div>';
+    // Clear container
+    accountsListContainer.innerHTML = '';
+    
+    if (activeAccounts.length === 0 && recentAccounts.length === 0) {
+        accountsListContainer.innerHTML = '<div class="no-accounts">No accounts found</div>';
+        return;
     }
     
-    // Display recent accounts
-    if (recentAccounts.length > 0) {
-        recentAccountsContainer.innerHTML = '';
-        recentAccounts.forEach(account => {
-            recentAccountsContainer.appendChild(createAccountItem(account, false));
-        });
-    } else {
-        recentAccountsContainer.innerHTML = '<div class="no-accounts">No recent accounts</div>';
+    // First display the currently active account (if any)
+    const currentAccount = activeAccounts.find(account => account.username === currentUsername);
+    if (currentAccount) {
+        accountsListContainer.appendChild(createAccountItem(currentAccount, true));
     }
+    
+    // Then display other active accounts
+    activeAccounts
+        .filter(account => account.username !== currentUsername)
+        .forEach(account => {
+            accountsListContainer.appendChild(createAccountItem(account, true));
+        });
+    
+    // Finally display logged out accounts
+    recentAccounts.forEach(account => {
+        accountsListContainer.appendChild(createAccountItem(account, false));
+    });
 }
 
 // Get active accounts from localStorage
@@ -182,8 +188,16 @@ function getRecentAccounts() {
         // Parse accounts and validate each one
         const accounts = JSON.parse(recentAccountsJSON);
         
+        // Get current active accounts to filter them out
+        const activeAccountsJSON = localStorage.getItem('activeAccounts');
+        const activeAccounts = activeAccountsJSON ? JSON.parse(activeAccountsJSON) : [];
+        const activeUsernames = activeAccounts.map(account => account.username);
+        
+        // Filter out any accounts that are already in the active accounts list
+        const filteredAccounts = accounts.filter(account => !activeUsernames.includes(account.username));
+        
         // Validate each account's profile picture
-        return accounts.map(account => {
+        return filteredAccounts.map(account => {
             // Ensure valid profile picture
             if (!account.profilePic || 
                 account.profilePic === 'undefined' || 
@@ -207,10 +221,11 @@ function getRecentAccounts() {
 // Create account item element
 function createAccountItem(account, isActive) {
     const accountItem = document.createElement('div');
-    accountItem.className = `account-item${isActive ? ' active' : ''}`;
-    accountItem.dataset.username = account.username;
+    const currentUsername = localStorage.getItem('username');
+    const isCurrentUser = isActive && account.username === currentUsername;
     
-    const avatarClass = isActive ? '' : ' logged-out';
+    accountItem.className = `account-item${isActive ? ' active' : ' logged-out'}`;
+    accountItem.dataset.username = account.username;
     
     // Ensure we have valid display values and default profile picture
     const displayName = account.displayName || account.username || 'Unknown User';
@@ -222,16 +237,13 @@ function createAccountItem(account, isActive) {
         profilePic = account.profilePic;
     }
     
-    // Debug profile pic value
-    console.log(`Profile pic for ${username}:`, profilePic, 'Original value:', account.profilePic);
-    
     accountItem.innerHTML = `
-        <img src="${profilePic}" alt="${displayName}" class="account-avatar${avatarClass}" onerror="this.src='/images/default-profile.png'">
+        <img src="${profilePic}" alt="${displayName}" class="account-avatar${isActive ? '' : ' logged-out'}" onerror="this.src='/images/default-profile.png'">
         <div class="account-info">
             <div class="account-name">${displayName}</div>
             <div class="account-username">@${username}</div>
-            <div class="account-status${isActive ? ' active' : ''}">
-                ${isActive ? 'Active now' : 'Logged out'}
+            <div class="account-status${isCurrentUser ? ' active' : ''}">
+                ${isCurrentUser ? 'Active now' : (isActive ? '' : 'Logged out')}
             </div>
         </div>
         <div class="account-actions">
@@ -285,45 +297,66 @@ function createAccountItem(account, isActive) {
     return accountItem;
 }
 
-// Switch to an active account
+// Switch to an already logged in account
 function switchToAccount(username) {
-    // Get active accounts
-    const activeAccountsJSON = localStorage.getItem('activeAccounts');
-    if (!activeAccountsJSON) return;
-    
-    const activeAccounts = JSON.parse(activeAccountsJSON);
-    const accountToSwitch = activeAccounts.find(account => account.username === username);
-    
-    if (!accountToSwitch) return;
-    
-    // Make sure we have valid data
-    const displayName = accountToSwitch.displayName || username;
-    
-    // Handle default profile picture properly
-    let profilePic = '/images/default-profile.png';
-    if (accountToSwitch.profilePic && 
-        accountToSwitch.profilePic !== 'undefined' && 
-        accountToSwitch.profilePic !== 'null') {
-        profilePic = accountToSwitch.profilePic;
+    try {
+        // Get active accounts
+        const activeAccountsJSON = localStorage.getItem('activeAccounts');
+        if (!activeAccountsJSON) return false;
+        
+        const activeAccounts = JSON.parse(activeAccountsJSON);
+        
+        // Find the account in active accounts
+        const accountToSwitch = activeAccounts.find(account => account.username === username);
+        if (!accountToSwitch) return false;
+        
+        // Get current active user
+        const currentUsername = localStorage.getItem('username');
+        if (currentUsername === username) {
+            // Already using this account, just redirect
+            window.location.href = '/';
+            return true;
+        }
+        
+        // Update account as active
+        localStorage.setItem('username', accountToSwitch.username);
+        localStorage.setItem('displayName', accountToSwitch.displayName || accountToSwitch.username);
+        localStorage.setItem('profilePic', accountToSwitch.profilePic || '/images/default-profile.png');
+        localStorage.setItem('isLoggedIn', 'true');
+        
+        // Reset flag
+        sessionStorage.removeItem('justLoggedIn');
+        
+        // Update last active timestamp
+        accountToSwitch.lastActive = Date.now();
+        localStorage.setItem('activeAccounts', JSON.stringify(activeAccounts));
+        
+        // Remove the account from recent accounts if it exists there
+        const recentAccountsJSON = localStorage.getItem('recentAccounts');
+        if (recentAccountsJSON) {
+            const recentAccounts = JSON.parse(recentAccountsJSON);
+            const updatedRecentAccounts = recentAccounts.filter(account => account.username !== username);
+            localStorage.setItem('recentAccounts', JSON.stringify(updatedRecentAccounts));
+        }
+        
+        // Refresh the UI to update active status indicators
+        loadAccounts();
+        
+        // Show success notification and redirect
+        notifications.success('Account Switched', `Logged in as ${accountToSwitch.displayName || accountToSwitch.username}`);
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 800);
+        
+        return true;
+    } catch (error) {
+        console.error('Error switching account:', error);
+        notifications.error('Error', 'Failed to switch account');
+        return false;
     }
-    
-    // Update current user in localStorage
-    localStorage.setItem('username', username);
-    localStorage.setItem('displayName', displayName);
-    localStorage.setItem('profilePic', profilePic);
-    
-    // Ensure user is marked as logged in
-    localStorage.setItem('isLoggedIn', 'true');
-    
-    // Update last active timestamp
-    accountToSwitch.lastActive = Date.now();
-    localStorage.setItem('activeAccounts', JSON.stringify(activeAccounts));
-    
-    // Redirect to home page
-    window.location.href = '/';
 }
 
-// Remove an account from active or recent accounts
+// Remove an account from the accounts list
 function removeAccount(username, isActive) {
     if (!confirm(`Remove ${username} from your accounts?`)) return;
     
@@ -345,8 +378,17 @@ function removeAccount(username, isActive) {
         }
     }
     
-    // Reload accounts UI
-    loadAccounts();
+    // Remove the account item from the DOM
+    const accountItem = document.querySelector(`.account-item[data-username="${username}"]`);
+    if (accountItem) {
+        accountItem.remove();
+    }
+    
+    // Check if we need to show the "No accounts" message
+    const accountsList = document.getElementById('accountsList');
+    if (accountsList && accountsList.children.length === 0) {
+        accountsList.innerHTML = '<div class="no-accounts">No accounts found</div>';
+    }
 }
 
 // Initialize password modal events
@@ -431,149 +473,115 @@ function showPasswordModal(username) {
     if (passwordInput) passwordInput.focus();
 }
 
-// Attempt to log in with password
+// Attempt to log in with the given username and password
 function attemptLogin() {
-    const username = document.getElementById('loginUsername').value;
-    const password = document.getElementById('loginPassword').value;
-    const errorMsg = document.getElementById('passwordError');
+    // Get values from modal
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    const rememberMe = document.getElementById('remember-me').checked;
     
-    if (!username || !password) return;
+    if (!username || !password) {
+        document.getElementById('password-error').textContent = 'Username and password are required';
+        return;
+    }
     
-    // In a real app, this would make an API call to verify credentials
-    // For demo purposes, we'll use a simple mock authentication
+    // For demo purposes only! In a real app, this would be a server request
     mockAuthenticate(username, password)
-        .then(success => {
-            if (success) {
-                // Get recent accounts
-                const recentAccountsJSON = localStorage.getItem('recentAccounts');
-                let recentAccounts = recentAccountsJSON ? JSON.parse(recentAccountsJSON) : [];
-                
-                // Find the account in recent accounts
-                const accountIndex = recentAccounts.findIndex(account => account.username === username);
-                
-                if (accountIndex >= 0) {
-                    // Get the full account data
-                    const account = recentAccounts[accountIndex];
-                    
-                    // Make sure we have valid data
-                    const displayName = account.displayName || username;
-                    
-                    // Handle default profile picture properly
-                    let profilePic = '/images/default-profile.png';
-                    if (account.profilePic && 
-                        account.profilePic !== 'undefined' && 
-                        account.profilePic !== 'null') {
-                        profilePic = account.profilePic;
-                    }
-                    
-                    // Remove from recent accounts
-                    recentAccounts.splice(accountIndex, 1);
-                    localStorage.setItem('recentAccounts', JSON.stringify(recentAccounts));
-                    
-                    // Add to active accounts
-                    const activeAccountsJSON = localStorage.getItem('activeAccounts');
-                    let activeAccounts = activeAccountsJSON ? JSON.parse(activeAccountsJSON) : [];
-                    
-                    // Add complete account data to active accounts
-                    activeAccounts.push({
-                        username: username,
-                        displayName: displayName,
-                        profilePic: profilePic,
-                        lastActive: Date.now()
-                    });
-                    
-                    localStorage.setItem('activeAccounts', JSON.stringify(activeAccounts));
-                    
-                    // Set as current user with complete data
-                    localStorage.setItem('username', username);
-                    localStorage.setItem('displayName', displayName);
-                    localStorage.setItem('profilePic', profilePic);
-                    localStorage.setItem('isLoggedIn', 'true');
-                    
-                    // Redirect to home
-                    window.location.href = '/';
-                }
+        .then(userData => {
+            // Successfully authenticated
+            console.log('Authentication successful:', userData);
+            
+            // Update user data in localStorage
+            localStorage.setItem('username', userData.username);
+            localStorage.setItem('displayName', userData.displayName || userData.username);
+            localStorage.setItem('profilePic', userData.profilePic || '/images/default-profile.png');
+            localStorage.setItem('isLoggedIn', 'true');
+            
+            // Add to active accounts
+            const activeAccountsJSON = localStorage.getItem('activeAccounts');
+            let activeAccounts = activeAccountsJSON ? JSON.parse(activeAccountsJSON) : [];
+            
+            // Check if user already exists in active accounts
+            const existingIndex = activeAccounts.findIndex(acc => acc.username === userData.username);
+            if (existingIndex >= 0) {
+                // Update existing account
+                activeAccounts[existingIndex] = {
+                    ...activeAccounts[existingIndex],
+                    ...userData,
+                    lastActive: Date.now()
+                };
             } else {
-                // Show error message
-                if (errorMsg) errorMsg.classList.add('show');
+                // Add new account
+                activeAccounts.push({
+                    ...userData,
+                    lastActive: Date.now()
+                });
             }
+            
+            localStorage.setItem('activeAccounts', JSON.stringify(activeAccounts));
+            
+            // Remove from recent accounts if present
+            const recentAccountsJSON = localStorage.getItem('recentAccounts');
+            if (recentAccountsJSON) {
+                const recentAccounts = JSON.parse(recentAccountsJSON);
+                const updatedRecentAccounts = recentAccounts.filter(acc => acc.username !== userData.username);
+                localStorage.setItem('recentAccounts', JSON.stringify(updatedRecentAccounts));
+            }
+            
+            // Close modal and redirect
+            const modal = document.getElementById('password-modal');
+            if (modal) modal.style.display = 'none';
+            
+            notifications.success('Login Successful', `Welcome back, ${userData.displayName || userData.username}!`);
+            
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 800);
+        })
+        .catch(error => {
+            console.error('Authentication error:', error);
+            document.getElementById('password-error').textContent = error.message || 'Invalid username or password';
         });
 }
 
-// Mock authentication function (replace with real API call in production)
+// Mock authentication function for demo purposes
+// In a real app, this would be a server request
 function mockAuthenticate(username, password) {
-    return new Promise(resolve => {
-        // In a real app, this would be an API call
-        // For demo purposes, we'll accept any password that's at least 6 characters
+    return new Promise((resolve, reject) => {
         setTimeout(() => {
-            resolve(password.length >= 6);
-        }, 800);
+            if (password === 'password') {
+                // Get user data from recent accounts if available
+                const recentAccountsJSON = localStorage.getItem('recentAccounts');
+                const recentAccounts = recentAccountsJSON ? JSON.parse(recentAccountsJSON) : [];
+                const account = recentAccounts.find(acc => acc.username === username);
+                
+                if (account) {
+                    // Return existing account data
+                    resolve({
+                        username: account.username,
+                        displayName: account.displayName || account.username,
+                        profilePic: account.profilePic || '/images/default-profile.png'
+                    });
+                } else {
+                    // Create new account data
+                    resolve({
+                        username: username,
+                        displayName: username,
+                        profilePic: '/images/default-profile.png'
+                    });
+                }
+            } else {
+                reject({ message: 'Invalid username or password' });
+            }
+        }, 500); // Simulate network delay
     });
 }
 
 // Update logout functionality to handle account switching
 function logout() {
-    const username = localStorage.getItem('username');
-    const displayName = localStorage.getItem('displayName');
-    
-    // Handle profile picture properly
-    let profilePic = '/images/default-profile.png';
-    const storedProfilePic = localStorage.getItem('profilePic');
-    if (storedProfilePic && 
-        storedProfilePic !== 'undefined' && 
-        storedProfilePic !== 'null') {
-        profilePic = storedProfilePic;
-    }
-    
-    if (username) {
-        // Get active accounts
-        const activeAccountsJSON = localStorage.getItem('activeAccounts');
-        let activeAccounts = activeAccountsJSON ? JSON.parse(activeAccountsJSON) : [];
-        
-        // Remove current account from active accounts
-        const accountIndex = activeAccounts.findIndex(account => account.username === username);
-        
-        if (accountIndex >= 0) {
-            // Store the account data before removal
-            const account = {...activeAccounts[accountIndex]};
-            
-            // Remove from active accounts list
-            activeAccounts.splice(accountIndex, 1);
-            localStorage.setItem('activeAccounts', JSON.stringify(activeAccounts));
-            
-            // Add to recent accounts
-            const recentAccountsJSON = localStorage.getItem('recentAccounts');
-            let recentAccounts = recentAccountsJSON ? JSON.parse(recentAccountsJSON) : [];
-            
-            // Check if already in recent accounts
-            const recentIndex = recentAccounts.findIndex(acc => acc.username === username);
-            
-            if (recentIndex >= 0) {
-                recentAccounts.splice(recentIndex, 1);
-            }
-            
-            // Add account with complete data
-            recentAccounts.unshift({
-                username,
-                displayName: displayName || username,
-                profilePic: profilePic,
-                lastActive: Date.now()
-            });
-            
-            // Limit to 5 recent accounts
-            if (recentAccounts.length > 5) {
-                recentAccounts = recentAccounts.slice(0, 5);
-            }
-            
-            localStorage.setItem('recentAccounts', JSON.stringify(recentAccounts));
-        }
-    }
-    
-    // Clear login status but maintain username for account switch page
-    localStorage.removeItem('isLoggedIn');
-    
-    // Redirect to account switch page
-    window.location.href = '/account-switch';
+    // Just redirect to the server-side logout endpoint
+    // The server will handle removing the account from active accounts
+    window.location.href = '/logout';
 }
 
 // Expose logout function globally for use by logout button

@@ -261,16 +261,6 @@ app.get("/logout", (req, res) => {
         <script>
             // Get current username for account switching
             const username = localStorage.getItem('username');
-            const displayName = localStorage.getItem('displayName') || username;
-            
-            // Handle profile picture properly
-            let profilePic = '/images/default-profile.png';
-            const storedProfilePic = localStorage.getItem('profilePic');
-            if (storedProfilePic && 
-                storedProfilePic !== 'undefined' && 
-                storedProfilePic !== 'null') {
-                profilePic = storedProfilePic;
-            }
             
             // Clear login status but keep account info in localStorage
             localStorage.removeItem('isLoggedIn');
@@ -285,37 +275,12 @@ app.get("/logout", (req, res) => {
                 const accountIndex = activeAccounts.findIndex(account => account.username === username);
                 
                 if (accountIndex >= 0) {
-                    // Store all account data
-                    const accountData = {...activeAccounts[accountIndex]};
-                    
                     // Remove current account from active accounts
                     activeAccounts.splice(accountIndex, 1);
                     localStorage.setItem('activeAccounts', JSON.stringify(activeAccounts));
                     
-                    // Add to recent accounts
-                    const recentAccountsJSON = localStorage.getItem('recentAccounts');
-                    let recentAccounts = recentAccountsJSON ? JSON.parse(recentAccountsJSON) : [];
-                    
-                    // Check if already in recent accounts
-                    const recentIndex = recentAccounts.findIndex(acc => acc.username === username);
-                    if (recentIndex >= 0) {
-                        recentAccounts.splice(recentIndex, 1);
-                    }
-                    
-                    // Add account with complete data
-                    recentAccounts.unshift({
-                        username,
-                        displayName: displayName || username,
-                        profilePic: profilePic,
-                        lastActive: Date.now()
-                    });
-                    
-                    // Limit to 5 recent accounts
-                    if (recentAccounts.length > 5) {
-                        recentAccounts = recentAccounts.slice(0, 5);
-                    }
-                    
-                    localStorage.setItem('recentAccounts', JSON.stringify(recentAccounts));
+                    // Note: We no longer add logged out accounts to the recent accounts list
+                    // This prevents duplicate entries between active and recent accounts
                 }
             }
             
@@ -1219,12 +1184,26 @@ app.get('/api/friends', async (req, res) => {
         if (!username) {
             return res.status(401).json({ error: 'User not authenticated' });
         }
+
+        // Support for pagination
+        const limit = req.query.limit ? parseInt(req.query.limit) : 100;
+        const page = req.query.page ? parseInt(req.query.page) : 1;
+        const skip = (page - 1) * limit;
         
-        // Find friends
-        const friendships = await Friend.find({ user: username });
+        // Find friends with pagination
+        const friendships = await Friend.find({ user: username }).skip(skip).limit(limit);
+        const totalCount = await Friend.countDocuments({ user: username });
         
         if (friendships.length === 0) {
-            return res.json({ friends: [] });
+            return res.json({ 
+                friends: [],
+                pagination: {
+                    total: 0,
+                    page: page,
+                    limit: limit,
+                    pages: 0
+                }
+            });
         }
         
         // Get friend usernames
@@ -1242,7 +1221,15 @@ app.get('/api/friends', async (req, res) => {
             profilePic: profile.profilePic || '/images/default-profile.png'
         }));
         
-        res.json({ friends });
+        res.json({ 
+            friends,
+            pagination: {
+                total: totalCount,
+                page: page,
+                limit: limit,
+                pages: Math.ceil(totalCount / limit)
+            }
+        });
     } catch (error) {
         console.error('Error getting friends list:', error);
         res.status(500).json({ error: 'Error getting friends list' });
@@ -1431,13 +1418,28 @@ app.get('/api/friends/:username', async (req, res) => {
                 return res.status(403).json({ error: 'You must be friends with this user to view their friends list' });
             }
         }
+
+        // Support for pagination
+        const limit = req.query.limit ? parseInt(req.query.limit) : 100;
+        const page = req.query.page ? parseInt(req.query.page) : 1;
+        const skip = (page - 1) * limit;
         
-        // Find friends
-        const friendships = await Friend.find({ user: targetUsername });
-        console.log(`Found ${friendships.length} friends for ${targetUsername}`);
+        // Find friends with pagination
+        const friendships = await Friend.find({ user: targetUsername }).skip(skip).limit(limit);
+        const totalCount = await Friend.countDocuments({ user: targetUsername });
+        
+        console.log(`Found ${friendships.length} friends for ${targetUsername} (page ${page} of ${Math.ceil(totalCount / limit)})`);
         
         if (friendships.length === 0) {
-            return res.json({ friends: [] });
+            return res.json({ 
+                friends: [],
+                pagination: {
+                    total: totalCount,
+                    page: page,
+                    limit: limit,
+                    pages: Math.ceil(totalCount / limit)
+                }
+            });
         }
         
         // Get friend usernames
@@ -1456,7 +1458,15 @@ app.get('/api/friends/:username', async (req, res) => {
         }));
         
         console.log(`Sending ${friends.length} formatted friends`);
-        res.json({ friends });
+        res.json({ 
+            friends,
+            pagination: {
+                total: totalCount,
+                page: page,
+                limit: limit,
+                pages: Math.ceil(totalCount / limit)
+            }
+        });
     } catch (error) {
         console.error('Error getting user friends list:', error);
         res.status(500).json({ error: 'Error getting friends list' });
