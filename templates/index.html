@@ -34,16 +34,29 @@
     </div>
     
     <div class="feed">
-        
+        <div id="chat-container">
+            <div class="chat-header">
+                <h2>Chat Room</h2>
+            </div>
+            <div id="messages" class="chat-messages"></div>
+            <div class="chat-input-container">
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button id="send-message" class="send-btn">
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="trend">
         
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/js/notifications.js"></script>
     <script src="/js/profileManager.js"></script>
     <script src="/js/main.js"></script>
+    <script src="/js/chat.js"></script>
     <script src="/js/index.js"></script>
 </body>
 

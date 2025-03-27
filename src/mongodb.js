@@ -40,6 +40,32 @@ const LoginSchema = new mongoose.Schema({
     }
 })
 
-const collection = new mongoose.model("collection1",LoginSchema)
+// Chat message schema
+const MessageSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: true,
+        ref: 'collection1'
+    },
+    text: {
+        type: String,
+        required: true
+    },
+    timestamp: {
+        type: Date,
+        default: Date.now
+    },
+    type: {
+        type: String,
+        enum: ['user', 'system'],
+        default: 'user'
+    }
+})
 
-module.exports = collection
+const collection = new mongoose.model("collection1", LoginSchema)
+const Message = new mongoose.model("Message", MessageSchema)
+
+module.exports = {
+    collection,
+    Message
+}

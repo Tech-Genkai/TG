@@ -1,9 +1,15 @@
 const express = require('express')
 const app = express()
 const path = require('path')
-const collection = require("./mongodb")
+const { collection, Message } = require("./mongodb")
 const multer = require('multer')
 const crypto = require('crypto')
+const http = require('http')
+const socketIo = require('socket.io')
+
+// Create HTTP server and Socket.io instance
+const server = http.createServer(app)
+const io = socketIo(server)
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -301,6 +307,137 @@ app.post("/register", upload.single('profilePic'), async(req, res) => {
     }
 });
 
-app.listen(4000, () => {
-    console.log("port connected on 4000");
+// Add endpoint to get chat history
+app.get("/api/chat/history", async(req, res) => {
+    try {
+        // Get the last 50 messages
+        const messages = await Message.find()
+            .sort({ timestamp: -1 })
+            .limit(50)
+            .exec();
+        
+        // Return the messages in reverse order (oldest first)
+        res.json(messages.reverse());
+    } catch (error) {
+        console.error('Error fetching chat history:', error);
+        res.status(500).json({ error: "Error fetching chat history" });
+    }
+});
+
+// Socket.io connection handling
+io.use(async (socket, next) => {
+    const username = socket.handshake.auth.username;
+    if (!username) {
+        return next(new Error("Invalid username"));
+    }
+    
+    // Fetch user's display name from database
+    try {
+        const user = await collection.findOne({ username });
+        if (user) {
+            socket.username = username;
+            socket.displayName = user.displayName || username; // Use display name or fall back to username
+        } else {
+            socket.username = username;
+            socket.displayName = username;
+        }
+        next();
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        return next(new Error("Error authenticating user"));
+    }
+});
+
+// Handle socket connections
+io.on('connection', async (socket) => {
+    const username = socket.username;
+    const displayName = socket.displayName;
+    console.log(`User connected: ${displayName} (${username})`);
+    
+    // Send chat history to the newly connected user
+    try {
+        const messages = await Message.find()
+            .sort({ timestamp: 1 }) // Sort by timestamp ascending (oldest first)
+            .exec();
+        
+        // Create a map of usernames to display names for efficiency
+        const userMap = new Map();
+        
+        // Add current user to map
+        userMap.set(username, displayName);
+        
+        // Get unique usernames from messages
+        const uniqueUsernames = [...new Set(messages
+            .filter(msg => msg.type === 'user')
+            .map(msg => msg.username))];
+            
+        // Fetch display names for all users in messages
+        if (uniqueUsernames.length > 0) {
+            const users = await collection.find({ 
+                username: { $in: uniqueUsernames } 
+            }).exec();
+            
+            users.forEach(user => {
+                userMap.set(user.username, user.displayName || user.username);
+            });
+        }
+        
+        // Emit messages one by one
+        messages.forEach(msg => {
+            if (msg.type === 'system') {
+                socket.emit('system message', {
+                    text: msg.text,
+                    timestamp: msg.timestamp
+                });
+            } else {
+                const msgDisplayName = userMap.get(msg.username) || msg.username;
+                socket.emit('chat message', {
+                    username: msg.username,
+                    displayName: msgDisplayName,
+                    text: msg.text,
+                    timestamp: msg.timestamp
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Error sending chat history:', error);
+    }
+    
+    // Handle chat messages
+    socket.on('chat message', async (msg) => {
+        const messageData = {
+            username: socket.username,
+            displayName: socket.displayName,
+            text: msg.text,
+            timestamp: new Date()
+        };
+        
+        // Save the message to the database
+        try {
+            const newMessage = new Message({
+                username: messageData.username,
+                text: messageData.text,
+                timestamp: messageData.timestamp,
+                type: 'user'
+            });
+            
+            await newMessage.save();
+        } catch (error) {
+            console.error('Error saving message:', error);
+        }
+        
+        // Broadcast the message to all connected clients
+        io.emit('chat message', messageData);
+    });
+    
+    // Handle disconnection
+    socket.on('disconnect', async () => {
+        console.log(`User disconnected: ${displayName} (${username})`);
+    });
+});
+
+// Update listen method to use the HTTP server instead of Express app
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
 })
