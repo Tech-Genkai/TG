@@ -1474,9 +1474,9 @@ app.get('/api/friends/:username', async (req, res) => {
 });
 
 // Update listen method to use the HTTP server instead of Express app
-const PORT = 4000;
-const HOST = '*';
+const PORT = process.env.PORT || 4000; // Use Render's PORT, fallback to 4000 for local testing
 
-server.listen(PORT, HOST, () => {
-    console.log(`🚀 Server running at http://${HOST}:${PORT}`);
+server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
 });
+
