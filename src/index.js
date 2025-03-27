@@ -20,7 +20,22 @@ const storage = multer.diskStorage({
     }
 })
 
-const upload = multer({ storage: storage })
+// Add file filter to only accept images
+const fileFilter = (req, file, cb) => {
+    // Accept images only
+    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+        return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+};
+
+const upload = multer({ 
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+})
 
 const staticPath = path.join(__dirname, "../public")
 const templatePath = path.join(__dirname, "../templates")
@@ -196,13 +211,18 @@ app.get("/api/user/profile", async(req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
 
+        // Format gender with first letter capitalized
+        const formattedGender = user.gender 
+            ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) 
+            : 'Not specified';
+            
         // Return all profile data
         res.json({
             username: user.username,
             displayName: user.displayName || user.username,
             profilePic: user.profilePic || '/images/default-profile.png',
-            gender: user.gender || 'Not specified',
-            dob: user.dateOfBirth || 'Not specified'
+            gender: formattedGender,
+            dob: user.dateOfBirth ? user.dateOfBirth : 'Not specified'
         });
     } catch (error) {
         console.error('Error fetching profile:', error);
@@ -245,35 +265,39 @@ app.post("/api/user/profile/update", upload.single('profilePic'), async(req, res
 
 // Add route to handle registration form submission
 app.post("/register", upload.single('profilePic'), async(req, res) => {
-    const data = {
-        displayName: req.body.displayName,
-        gender: req.body.gender,
-        dateOfBirth: req.body.dateOfBirth,
-        username: req.body.username // This will come from the logged-in user
-    }
-
-    // If a profile picture was uploaded, add its path to the data
-    if (req.file) {
-        data.profilePic = '/uploads/' + req.file.filename;
-    }
-
     try {
-        // Update the user's profile in the database
+        const data = {
+            displayName: req.body.displayName,
+            gender: req.body.gender,
+            dateOfBirth: req.body.dateOfBirth,
+            username: req.body.username
+        };
+
+        // Handle profile picture upload
+        if (req.file) {
+            console.log('Profile picture uploaded:', req.file);
+            data.profilePic = '/uploads/' + req.file.filename;
+        }
+
+        // Update user profile in database
         await collection.updateOne(
-            { username: req.body.username },
+            { username: data.username },
             { $set: data }
         );
-        
-        // Send success response with redirect to index
+
+        // Send success response with redirect script
         res.send(`
             <script>
-                // Redirect to index page without setting justLoggedIn flag
                 window.location.href = '/';
             </script>
         `);
     } catch (error) {
         console.error('Registration error:', error);
-        res.status(500).send("Error during registration: " + error.message);
+        res.status(500).send(`
+            <script>
+                notifications.error('Registration Failed', 'An error occurred during registration. Please try again.');
+            </script>
+        `);
     }
 });
 
