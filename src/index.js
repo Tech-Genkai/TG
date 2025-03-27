@@ -140,6 +140,17 @@ app.post("/check-username", async(req, res) => {
             return res.status(400).json({ error: "Username is required" });
         }
 
+        // Validate username length
+        if (username.length > 15) {
+            return res.status(400).json({ error: "Username must be 15 characters or less" });
+        }
+
+        // Validate username characters
+        const validUsernamePattern = /^[a-z0-9._]+$/;
+        if (!validUsernamePattern.test(username)) {
+            return res.status(400).json({ error: "Username can only contain lowercase letters, numbers, periods (.) and underscores (_)" });
+        }
+
         // Check if username exists
         const existingUser = await collection.findOne({ username });
         res.json({ exists: !!existingUser });
@@ -160,6 +171,12 @@ app.post("/signup", async(req, res) => {
         // Validate username length
         if (data.username.length > 15) {
             return res.status(400).send("Username must be 15 characters or less");
+        }
+
+        // Validate username characters
+        const validUsernamePattern = /^[a-z0-9._]+$/;
+        if (!validUsernamePattern.test(data.username)) {
+            return res.status(400).send("Username can only contain lowercase letters, numbers, periods (.) and underscores (_)");
         }
 
         // Validate password length
@@ -905,12 +922,16 @@ app.get('/api/conversations', async (req, res) => {
                     read: false
                 });
                 
+                // Get the last message and sanitize it to preserve emoticons
+                const lastMessage = conversation.lastMessage || 'Start a conversation';
+                const sanitizedLastMessage = lastMessage ? sanitizeText(lastMessage) : lastMessage;
+                
                 return {
                     id: conversation._id,
                     withUser: otherParticipant,
                     withUserDisplayName: user ? (user.displayName || otherParticipant) : otherParticipant,
                     withUserProfilePic: user ? (user.profilePic || '/images/default-profile.png') : '/images/default-profile.png',
-                    lastMessage: conversation.lastMessage || 'Start a conversation',
+                    lastMessage: sanitizedLastMessage,
                     lastMessageTime: conversation.lastMessageTime || conversation.updatedAt,
                     updatedAt: conversation.updatedAt,
                     unreadCount: unreadCount

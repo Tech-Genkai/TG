@@ -60,6 +60,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Validate username characters
+            const validUsernamePattern = /^[a-z0-9._]+$/;
+            if (!validUsernamePattern.test(username)) {
+                notifications.error(
+                    'Invalid Username',
+                    'Username can only contain lowercase letters, numbers, periods (.) and underscores (_)'
+                );
+                return;
+            }
+            
             // Validate password length
             if (password.length < 8) {
                 notifications.error(
@@ -79,6 +89,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: JSON.stringify({ username })
                 });
                 
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    notifications.error(
+                        'Validation Error',
+                        errorData.error || 'An error occurred during validation.'
+                    );
+                    return;
+                }
+                
                 const data = await response.json();
                 
                 if (data.exists) {
@@ -89,10 +108,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // If validation passes, submit the form
-                this.submit();
+                // If validation passes, submit the form with error handling
+                const formData = new FormData(this);
+                
+                const signupResponse = await fetch('/signup', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!signupResponse.ok) {
+                    const errorMessage = await signupResponse.text();
+                    notifications.error(
+                        'Signup Failed',
+                        errorMessage || 'An error occurred during signup.'
+                    );
+                    return;
+                }
+                
+                // If everything is successful, the server will handle the redirect
+                const responseHtml = await signupResponse.text();
+                document.body.innerHTML = responseHtml;
             } catch (error) {
-                console.error('Error checking username:', error);
+                console.error('Error during signup:', error);
                 notifications.error(
                     'Error',
                     'An error occurred. Please try again.'

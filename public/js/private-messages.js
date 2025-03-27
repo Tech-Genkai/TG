@@ -136,6 +136,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const lastMessageDate = new Date(conv.lastMessageTime);
             const formattedTime = formatTime(lastMessageDate);
             
+            // Sanitize the last message to preserve emoticons
+            const sanitizedLastMessage = sanitizeWithEmoticons(conv.lastMessage);
+            
             conversationItem.innerHTML = `
                 <div class="conversation-profile-pic">
                     <img src="${conv.withUserProfilePic}" alt="${conv.withUserDisplayName}">
@@ -146,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <h4 class="conversation-name">${conv.withUserDisplayName}</h4>
                         <span class="conversation-time">${formattedTime}</span>
                     </div>
-                    <p class="conversation-last-message">${conv.lastMessage}</p>
+                    <p class="conversation-last-message">${sanitizedLastMessage}</p>
                 </div>
             `;
             
