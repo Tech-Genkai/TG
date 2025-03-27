@@ -354,31 +354,46 @@ io.on('connection', async (socket) => {
     const displayName = socket.displayName;
     console.log(`User connected: ${displayName} (${username})`);
     
+    // Get user's profile picture
+    let profilePic = '/images/default-profile.png';
+    try {
+        const currentUser = await collection.findOne({ username });
+        if (currentUser && currentUser.profilePic) {
+            profilePic = currentUser.profilePic;
+        }
+        socket.profilePic = profilePic;
+    } catch (error) {
+        console.error('Error fetching profile picture:', error);
+    }
+    
     // Send chat history to the newly connected user
     try {
         const messages = await Message.find()
             .sort({ timestamp: 1 }) // Sort by timestamp ascending (oldest first)
             .exec();
         
-        // Create a map of usernames to display names for efficiency
-        const userMap = new Map();
+        // Create maps for user data
+        const userDisplayNames = new Map();
+        const userProfilePics = new Map();
         
-        // Add current user to map
-        userMap.set(username, displayName);
+        // Add current user to maps
+        userDisplayNames.set(username, displayName);
+        userProfilePics.set(username, profilePic);
         
         // Get unique usernames from messages
         const uniqueUsernames = [...new Set(messages
             .filter(msg => msg.type === 'user')
             .map(msg => msg.username))];
             
-        // Fetch display names for all users in messages
+        // Fetch user data for all users in messages
         if (uniqueUsernames.length > 0) {
             const users = await collection.find({ 
                 username: { $in: uniqueUsernames } 
             }).exec();
             
             users.forEach(user => {
-                userMap.set(user.username, user.displayName || user.username);
+                userDisplayNames.set(user.username, user.displayName || user.username);
+                userProfilePics.set(user.username, user.profilePic || '/images/default-profile.png');
             });
         }
         
@@ -390,10 +405,10 @@ io.on('connection', async (socket) => {
                     timestamp: msg.timestamp
                 });
             } else {
-                const msgDisplayName = userMap.get(msg.username) || msg.username;
                 socket.emit('chat message', {
                     username: msg.username,
-                    displayName: msgDisplayName,
+                    displayName: userDisplayNames.get(msg.username) || msg.username,
+                    profilePic: userProfilePics.get(msg.username) || '/images/default-profile.png',
                     text: msg.text,
                     timestamp: msg.timestamp
                 });
@@ -408,6 +423,7 @@ io.on('connection', async (socket) => {
         const messageData = {
             username: socket.username,
             displayName: socket.displayName,
+            profilePic: socket.profilePic,
             text: msg.text,
             timestamp: new Date()
         };
@@ -438,6 +454,6 @@ io.on('connection', async (socket) => {
 
 // Update listen method to use the HTTP server instead of Express app
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running at http://localhost:${PORT}`);
 })
