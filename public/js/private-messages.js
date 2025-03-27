@@ -20,35 +20,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const userPicElement = document.getElementById('chat-user-pic');
     const userProfileLink = document.getElementById('user-profile-link');
     const conversationSearchInput = document.getElementById('conversation-search');
-    const conversationsSidebar = document.querySelector('.conversations-sidebar');
-    const conversationsToggle = document.getElementById('conversations-toggle');
-    
-    // Handle mobile toggle for conversations
-    if (conversationsToggle) {
-        conversationsToggle.addEventListener('click', function() {
-            conversationsSidebar.classList.toggle('active');
-            // Change toggle text based on state
-            const toggleText = conversationsSidebar.classList.contains('active') ? 'Back to Chat' : 'Conversations';
-            const toggleIcon = conversationsSidebar.classList.contains('active') ? 'bi-arrow-left' : 'bi-list';
-            this.innerHTML = `<i class="${toggleIcon}"></i><span>${toggleText}</span>`;
-        });
-    }
-    
-    // Close conversations sidebar on mobile when selecting a conversation
-    function closeMobileConversationsSidebar() {
-        if (window.innerWidth <= 810 && conversationsSidebar) {
-            conversationsSidebar.classList.remove('active');
-            // Reset toggle button
-            if (conversationsToggle) {
-                conversationsToggle.innerHTML = `<i class="bi bi-list"></i><span>Conversations</span>`;
-            }
-        }
-    }
-    
-    // Check if it's a mobile device
-    function isMobileDevice() {
-        return window.innerWidth <= 810;
-    }
     
     // Current active conversation
     let activeConversation = null;
@@ -197,9 +168,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function openConversation(withUsername) {
         console.log('Opening conversation with:', withUsername);
         activeConversation = withUsername;
-        
-        // Close mobile sidebar when opening a conversation
-        closeMobileConversationsSidebar();
         
         // Update UI
         emptyState.style.display = 'none';
