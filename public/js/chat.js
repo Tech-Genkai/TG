@@ -12,6 +12,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-message');
     
+    // Add auto-resize functionality to the message input
+    messageInput.addEventListener('input', function() {
+        // Reset height to auto to get the right scrollHeight
+        this.style.height = 'auto';
+        // Set new height based on content (with a max)
+        const newHeight = Math.min(this.scrollHeight, 120);
+        this.style.height = newHeight + 'px';
+    });
+    
+    // Track last message sender for grouping
+    let lastMessageSender = null;
+    let lastMessageTime = null;
+    let lastMessageWrapper = null;
+    
     // Connect to Socket.io with username from localStorage
     const socket = io({
         auth: { 
@@ -38,19 +52,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle disconnection
     socket.on('disconnect', () => {
         console.log('Disconnected from chat server');
+        // Reset message grouping on disconnect
+        lastMessageSender = null;
+        lastMessageTime = null;
+        lastMessageWrapper = null;
     });
 
     // Handle system messages from server
     socket.on('system message', (data) => {
+        // System messages break the conversation flow
+        lastMessageSender = null;
+        lastMessageTime = null;
+        lastMessageWrapper = null;
+        
         addSystemMessage(data.text);
     });
 
     // Send message when button is clicked
     sendButton.addEventListener('click', sendMessage);
 
-    // Send message when Enter key is pressed
+    // Send message when Enter key is pressed (without Shift)
     messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             sendMessage();
         }
     });
@@ -61,19 +85,78 @@ document.addEventListener('DOMContentLoaded', function() {
         if (messageText) {
             // Send the message to the server
             socket.emit('chat message', { text: messageText });
-            // Clear input field
+            // Clear input field and reset its size
             messageInput.value = '';
+            messageInput.style.height = 'auto';
             // Focus on input field
             messageInput.focus();
         }
     }
 
+    // Function to check if messages should be grouped
+    function shouldGroupMessages(currentSender, currentTime) {
+        // If no previous message or different sender, don't group
+        if (!lastMessageSender || lastMessageSender !== currentSender) {
+            return false;
+        }
+        
+        // Check if messages are within 2 minutes of each other
+        if (currentTime && lastMessageTime) {
+            const timeDiff = Math.abs(new Date(currentTime) - new Date(lastMessageTime));
+            const twoMinutesInMs = 2 * 60 * 1000;
+            return timeDiff < twoMinutesInMs;
+        }
+        
+        return true;
+    }
+
+    // Function to format message text for display
+    function formatMessageText(text) {
+        // Replace newlines with <br> for proper display
+        return text.replace(/\n/g, '<br>');
+    }
+
     // Function to add a message to the chat
     function addMessage(msg) {
+        const currentSender = msg.username;
+        const currentTime = msg.timestamp;
+        const isOwnMessage = currentSender === username;
+        const messageText = msg.text;
+        const isShortMessage = messageText.length <= 5 && !messageText.includes('\n');
+        
+        // Check if this message should be grouped with the previous one
+        if (shouldGroupMessages(currentSender, currentTime)) {
+            // Create only the message bubble for consecutive messages
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message ' + 
+                (isOwnMessage ? 'message-own' : 'message-other') + ' consecutive-message';
+            
+            // Add special class for short messages
+            if (isShortMessage) {
+                messageElement.classList.add('short-message');
+            }
+            
+            // Create a span for the text content to control alignment
+            const textSpan = document.createElement('span');
+            textSpan.className = 'message-text';
+            textSpan.innerHTML = formatMessageText(messageText);
+            messageElement.appendChild(textSpan);
+            
+            // Find the message content container in the last wrapper
+            const messageContent = lastMessageWrapper.querySelector('.message-content');
+            messageContent.appendChild(messageElement);
+            
+            // Update last message time
+            lastMessageTime = currentTime;
+            
+            // Scroll to bottom
+            scrollToBottom();
+            return;
+        }
+        
+        // Create a new message container for a new sender or after time gap
         const messageContainer = document.createElement('div');
         messageContainer.className = 'message-container';
-        
-        const isOwnMessage = msg.username === username;
         
         // Create message content wrapper
         const messageWrapper = document.createElement('div');
@@ -129,21 +212,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageElement = document.createElement('div');
         messageElement.className = 'message ' + 
             (isOwnMessage ? 'message-own' : 'message-other');
-        messageElement.textContent = msg.text;
+        
+        // Add special class for short messages
+        if (isShortMessage) {
+            messageElement.classList.add('short-message');
+        }
+        
+        // Create a span for the text content to control alignment
+        const textSpan = document.createElement('span');
+        textSpan.className = 'message-text';
+        textSpan.innerHTML = formatMessageText(messageText);
+        messageElement.appendChild(textSpan);
+        
         messageContent.appendChild(messageElement);
         
-        // Arrange profile pic and message content based on ownership
-        if (isOwnMessage) {
-            messageWrapper.appendChild(messageContent);
-            messageWrapper.appendChild(profilePic);
-        } else {
-            messageWrapper.appendChild(profilePic);
-            messageWrapper.appendChild(messageContent);
-        }
+        // Append profile pic and message content
+        messageWrapper.appendChild(profilePic);
+        messageWrapper.appendChild(messageContent);
         
         // Add to container and scroll to bottom
         messageContainer.appendChild(messageWrapper);
         messagesContainer.appendChild(messageContainer);
+        
+        // Update tracking variables
+        lastMessageSender = currentSender;
+        lastMessageTime = currentTime;
+        lastMessageWrapper = messageWrapper;
+        
         scrollToBottom();
     }
 
