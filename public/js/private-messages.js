@@ -467,10 +467,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return true;
     }
     
-    // Format message text for display
+    // Function to format message text for display
     function formatMessageText(text) {
-        // Replace newlines with <br> for proper display
-        return text.replace(/\n/g, '<br>');
+        // Use the new function that preserves emoticons and handles line breaks
+        return sanitizeWithEmoticonsAndLineBreaks(text);
     }
     
     // Format time for display

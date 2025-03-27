@@ -112,8 +112,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to format message text for display
     function formatMessageText(text) {
-        // Replace newlines with <br> for proper display
-        return text.replace(/\n/g, '<br>');
+        // Use the new function that preserves emoticons and handles line breaks
+        return sanitizeWithEmoticonsAndLineBreaks(text);
     }
 
     // Function to add a message to the chat
@@ -254,15 +254,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to add a system message
     function addSystemMessage(text) {
-        const messageContainer = document.createElement('div');
-        messageContainer.className = 'message-container system-message-container';
+        // Create a system message element
+        const systemMessage = document.createElement('div');
+        systemMessage.className = 'system-message';
         
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message-system';
-        messageElement.textContent = text;
+        // Sanitize the text to prevent XSS attacks but preserve emoticons
+        const sanitizedText = sanitizeWithEmoticons(text);
         
-        messageContainer.appendChild(messageElement);
-        messagesContainer.appendChild(messageContainer);
+        systemMessage.innerHTML = sanitizedText;
+        messagesContainer.appendChild(systemMessage);
+        
+        // Scroll to bottom
         scrollToBottom();
     }
 

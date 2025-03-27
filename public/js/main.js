@@ -9,8 +9,9 @@ function checkLoginStatus() {
     // If we're not on the login or signup page and user is not logged in, redirect to login
     const currentPage = window.location.pathname;
     const isLoginPage = currentPage === '/login' || currentPage === '/signup';
+    const isAccountSwitchPage = currentPage === '/account-switch';
     
-    if (!isLoginPage && !isLoggedIn()) {
+    if (!isLoginPage && !isAccountSwitchPage && !isLoggedIn()) {
         // Force redirect to login page
         window.location.replace('/login');
         return false;
@@ -21,6 +22,56 @@ function checkLoginStatus() {
 // Set login status (call this after successful login)
 function setLoginStatus(status) {
     localStorage.setItem('isLoggedIn', status);
+    
+    // If logging in, initialize account management
+    if (status === 'true') {
+        initializeAccountStorage();
+    }
+}
+
+// Initialize account storage for first login or when active accounts don't exist
+function initializeAccountStorage() {
+    // Check if active accounts exist
+    const activeAccountsJSON = localStorage.getItem('activeAccounts');
+    
+    // If no active accounts exist, create storage with current user
+    if (!activeAccountsJSON) {
+        const username = localStorage.getItem('username');
+        const displayName = localStorage.getItem('displayName') || 'Unknown User';
+        const profilePic = localStorage.getItem('profilePic') || '/images/default-profile.png';
+        
+        if (username) {
+            const currentAccount = {
+                username,
+                displayName,
+                profilePic,
+                lastActive: Date.now()
+            };
+            
+            localStorage.setItem('activeAccounts', JSON.stringify([currentAccount]));
+        }
+    } else {
+        // If active accounts exist, check if current user is in the list
+        const activeAccounts = JSON.parse(activeAccountsJSON);
+        const username = localStorage.getItem('username');
+        
+        if (username) {
+            const exists = activeAccounts.some(account => account.username === username);
+            
+            if (!exists) {
+                // Add current user to active accounts
+                const currentAccount = {
+                    username,
+                    displayName: localStorage.getItem('displayName') || 'Unknown User',
+                    profilePic: localStorage.getItem('profilePic') || '/images/default-profile.png',
+                    lastActive: Date.now()
+                };
+                
+                activeAccounts.push(currentAccount);
+                localStorage.setItem('activeAccounts', JSON.stringify(activeAccounts));
+            }
+        }
+    }
 }
 
 // Set active page in sidebar
@@ -54,6 +105,10 @@ function setActivePage() {
         }
         // Special case for friends
         else if (href === '/friends' && currentPath.startsWith('/friends')) {
+            element.classList.add('active');
+        }
+        // Special case for accounts section (detecting by link text)
+        else if (element.textContent.includes('Accounts') && currentPath.includes('account')) {
             element.classList.add('active');
         }
         // Exact match for other pages

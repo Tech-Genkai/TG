@@ -6,10 +6,55 @@ const multer = require('multer')
 const crypto = require('crypto')
 const http = require('http')
 const socketIo = require('socket.io')
+const sanitizeHtml = require('sanitize-html')
 
 // Create HTTP server and Socket.io instance
 const server = http.createServer(app)
 const io = socketIo(server)
+
+// Configure sanitize-html options (stricter than default)
+const sanitizeOptions = {
+    allowedTags: [], // Don't allow any HTML tags
+    allowedAttributes: {}, // Don't allow any HTML attributes
+    disallowedTagsMode: 'escape', // Escape disallowed tags
+    transformers: [
+        // Custom transformer to preserve emoticons
+        (tagName, attribs, children, options) => {
+            // This is only called for allowed tags, but we're not allowing any tags
+            // Just returning null means no transformation
+            return null;
+        }
+    ]
+}
+
+// Sanitize function to prevent XSS
+function sanitizeText(text) {
+    if (!text) return '';
+    
+    // Preserve common emoticons before sanitizing
+    const emoticonRegex = /(?:>\.<?|<\.>?|>\.<|<\w<|>\w>|>\.<|<\.<|>\.>|=\.=|\^\.\^|;\.|;\)|:\)|:\(|:D|:P|:O|:\/|:\\|:'\(|XD|x_x|o_O|O_o|0_0|-_-|\^_\^|\._\.|T_T)/g;
+    
+    // Replace emoticons with temporary placeholders
+    const emoticonMap = new Map();
+    let counter = 0;
+    
+    const markedText = text.replace(emoticonRegex, (match) => {
+        const marker = `__EMOTICON_${counter}__`;
+        emoticonMap.set(marker, match);
+        counter++;
+        return marker;
+    });
+    
+    // Sanitize the text
+    let sanitized = sanitizeHtml(markedText, sanitizeOptions);
+    
+    // Restore emoticons
+    emoticonMap.forEach((emoticon, marker) => {
+        sanitized = sanitized.replace(marker, emoticon);
+    });
+    
+    return sanitized;
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -197,15 +242,79 @@ app.get("/home", preventCaching, (req, res) => {
 app.get("/logout", (req, res) => {
     res.send(`
         <script>
-            // Clear all auth data
+            // Get current username for account switching
+            const username = localStorage.getItem('username');
+            const displayName = localStorage.getItem('displayName') || username;
+            
+            // Handle profile picture properly
+            let profilePic = '/images/default-profile.png';
+            const storedProfilePic = localStorage.getItem('profilePic');
+            if (storedProfilePic && 
+                storedProfilePic !== 'undefined' && 
+                storedProfilePic !== 'null') {
+                profilePic = storedProfilePic;
+            }
+            
+            // Clear login status but keep account info in localStorage
             localStorage.removeItem('isLoggedIn');
+            
+            // Handle account switching
+            if (username) {
+                // Get active accounts
+                const activeAccountsJSON = localStorage.getItem('activeAccounts');
+                let activeAccounts = activeAccountsJSON ? JSON.parse(activeAccountsJSON) : [];
+                
+                // Find user in active accounts
+                const accountIndex = activeAccounts.findIndex(account => account.username === username);
+                
+                if (accountIndex >= 0) {
+                    // Store all account data
+                    const accountData = {...activeAccounts[accountIndex]};
+                    
+                    // Remove current account from active accounts
+                    activeAccounts.splice(accountIndex, 1);
+                    localStorage.setItem('activeAccounts', JSON.stringify(activeAccounts));
+                    
+                    // Add to recent accounts
+                    const recentAccountsJSON = localStorage.getItem('recentAccounts');
+                    let recentAccounts = recentAccountsJSON ? JSON.parse(recentAccountsJSON) : [];
+                    
+                    // Check if already in recent accounts
+                    const recentIndex = recentAccounts.findIndex(acc => acc.username === username);
+                    if (recentIndex >= 0) {
+                        recentAccounts.splice(recentIndex, 1);
+                    }
+                    
+                    // Add account with complete data
+                    recentAccounts.unshift({
+                        username,
+                        displayName: displayName || username,
+                        profilePic: profilePic,
+                        lastActive: Date.now()
+                    });
+                    
+                    // Limit to 5 recent accounts
+                    if (recentAccounts.length > 5) {
+                        recentAccounts = recentAccounts.slice(0, 5);
+                    }
+                    
+                    localStorage.setItem('recentAccounts', JSON.stringify(recentAccounts));
+                }
+            }
+            
+            // Clear session storage
             sessionStorage.removeItem('justLoggedIn');
             sessionStorage.clear();
-            localStorage.clear();
-            // Redirect to login page
-            window.location.href = '/login';
+            
+            // Redirect to account switch page
+            window.location.href = '/account-switch';
         </script>
     `);
+});
+
+// Add route for account switching page
+app.get("/account-switch", preventCaching, (req, res) => {
+    res.sendFile(path.join(templatePath, "account-switch.html"));
 });
 
 // Update endpoint to get user profile data
@@ -572,11 +681,14 @@ io.on('connection', async (socket) => {
     
     // Handle chat messages
     socket.on('chat message', async (msg) => {
+        // Sanitize message text
+        const sanitizedText = sanitizeText(msg.text);
+        
         const messageData = {
             username: socket.username,
             displayName: socket.displayName,
             profilePic: socket.profilePic,
-            text: msg.text,
+            text: sanitizedText,
             timestamp: new Date()
         };
         
@@ -607,8 +719,11 @@ io.on('connection', async (socket) => {
             return socket.emit('error', { message: 'Invalid message data' });
         }
         
+        // Sanitize message text
+        const sanitizedText = sanitizeText(text);
+        
         try {
-            console.log(`Private message from ${socket.username} to ${recipient}: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`);
+            console.log(`Private message from ${socket.username} to ${recipient}: "${sanitizedText.substring(0, 30)}${sanitizedText.length > 30 ? '...' : ''}"`);
             
             // Get recipient user
             const recipientUser = await collection.findOne({ username: recipient });
@@ -625,7 +740,7 @@ io.on('connection', async (socket) => {
                 recipient: recipient,
                 recipientDisplayName: recipientUser.displayName || recipient,
                 recipientProfilePic: recipientUser.profilePic || '/images/default-profile.png',
-                text: text,
+                text: sanitizedText,
                 timestamp: new Date()
             };
             
@@ -650,7 +765,7 @@ io.on('connection', async (socket) => {
             if (conversation) {
                 // Update existing conversation
                 console.log(`Updating existing conversation: ${conversation._id}`);
-                conversation.lastMessage = text;
+                conversation.lastMessage = sanitizedText;
                 conversation.lastMessageTime = messageData.timestamp;
                 conversation.updatedAt = messageData.timestamp;
                 await conversation.save();
@@ -659,7 +774,7 @@ io.on('connection', async (socket) => {
                 console.log(`Creating new conversation for users: ${participantsArray.join(', ')}`);
                 conversation = new Conversation({
                     participants: participantsArray,
-                    lastMessage: text,
+                    lastMessage: sanitizedText,
                     lastMessageTime: messageData.timestamp,
                     updatedAt: messageData.timestamp
                 });
