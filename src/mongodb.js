@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 // Ensure the database URI is set (must be provided in Render's environment variables)
-const DB_URI = process.env.MONGODB_URI;
+const DB_URI = "mongodb+srv://Techgenkai:owQ93oULRw3tASA@cluster0.ovchals.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 if (!DB_URI) {
     console.error("❌ MONGODB_URI is not set. Please configure it in Render's environment variables.");
