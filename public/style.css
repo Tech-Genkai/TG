@@ -109,7 +109,7 @@ body {
     top: 70px; /* Adjust based on navbar height */
     width: 150px;
     height: calc(100vh - 75px); /* Full height minus navbar */
-    background: #1a1a1a50; /* Dark background matching theme */
+    background: #1a1a1a6d; /* Dark background matching theme */
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -137,6 +137,11 @@ body {
     padding: 10px;
     border-radius: 10px;
     transition: all 0.3s ease-out;
+}
+
+.sidebar a:last-child {
+    margin-top: auto;
+    margin-bottom: 40px;
 }
 
 .sidebar a img {
@@ -247,6 +252,11 @@ body {
         padding: 8px;
         font-size: 0;        
         width: 30px;
+    }
+
+    .sidebar a:last-child {
+        margin-top: auto;
+        margin-bottom: 27px;
     }
     
     .sidebar a span{
