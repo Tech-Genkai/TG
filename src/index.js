@@ -1474,7 +1474,9 @@ app.get('/api/friends/:username', async (req, res) => {
 });
 
 // Update listen method to use the HTTP server instead of Express app
-const PORT = process.env.PORT || 4000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running at http://localhost:${PORT}`);
-})
+const PORT = 4000;
+const HOST = '*';
+
+server.listen(PORT, HOST, () => {
+    console.log(`🚀 Server running at http://${HOST}:${PORT}`);
+});
