@@ -466,11 +466,6 @@
     color: inherit;
 }
 
-.account-item.active {
-    border-left: 3px solid var(--dragon);
-    background: #33333390;
-}
-
 /* Remove current label styling */
 .current-label {
     display: none;

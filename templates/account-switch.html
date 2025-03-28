@@ -2,76 +2,34 @@
 <html lang="en">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/css/account-switch.css">
+    <link rel="stylesheet" href="/login-signup.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
     <title>TG - Switch Account</title>
 </head>
 
 <body>
     <div class="bg"></div>
-    
-    <!-- 
-        IMPORTANT: Navbar & Sidebar Structure
-        This structure must be maintained consistently across all pages.
-        The sidebar order is:
-        1. Home
-        2. Messages
-        3. Friends
-        4. Notifications
-        5. Profile
-        6. Accounts
-        7. Log Out
-    -->
-    <nav class="navbar">
-        <div class="Org-logo">
-            <img src="/images/logo.png" alt="Site">
-            <h4>Tech Genkai</h4>
-        </div>
-        <div class="search-bar">
-            <input type="text" class="search" placeholder="Search on site">
-        </div>
-        <div class="nav-icons">
-            <a href="#"><img src="/images/add.png" alt="Add"></a>
-            <a href="#"><img src="/images/hash.svg" alt="Hash"></a>
-            <a href="/messages"><img src="/images/message-icon.png" alt="Messages"></a>            
-            <a href="/profile"><img src="/images/default-profile.png" alt="Profile" id="navProfilePic"></a>
-        </div>
-    </nav>
-    <div class="sidebar">
-        <h2>Tech Genkai</h2>
-        <a href="/"><img src="/images/home-icon.svg" alt="Home">Home</a>
-        <a href="/messages"><img src="/images/message-icon.png" alt="Messages">Messages</a>
-        <a href="/friends"><img src="/images/user-friends.png" alt="Friends">Friends</a>
-        <a href="#"><img src="/images/bell-icon.png" alt="Notifications">Notifications</a>
-        <a href="/profile"><img src="/images/default-profile.png" alt="Profile" id="sidebarProfilePic"></a>
-        <a href="/account-switch"><img src="/images/switch-account.png" alt="Accounts">Accounts</a>
-        <a href="javascript:void(0)" onclick="logout()"><img src="/images/logout.png" alt="Log Out">Log Out</a>
-    </div>
-    
-    <div class="wrapper">
-        <div class="account-switch-container">
-            <div class="account-header">
-                <h1>Switch Account</h1>
-                <p>Choose an account to use</p>
-            </div>
-            
-            <div class="accounts-section">
-                <h2>All Accounts</h2>
-                <div class="account-list" id="accountsList">
-                    <!-- All accounts will be populated here -->
-                    <div class="loading-spinner">
-                        <i class="bi bi-arrow-repeat"></i> Loading...
-                    </div>
+    <div class="form-wrapper">
+        <div class="form-title">Switch Account</div>
+        <p style="text-align: center; color: #ffffff80; margin-bottom: 30px;">Choose an account to use</p>
+        
+        <div class="accounts-section">
+            <div class="account-list" id="accountsList">
+                <div class="loading-spinner">
+                    <i class="bi bi-arrow-repeat"></i> Loading...
                 </div>
             </div>
-            
-            <div class="login-section">
-                <p>Need to log in to a different account?</p>
-                <a href="/login" class="login-btn">
-                    <i class="bi bi-box-arrow-in-right"></i> Log In
-                </a>
-            </div>
+        </div>
+        
+        <div class="separator">or</div>
+        
+        <div class="bottom">
+            Need to log in to a different account? 
+            <a href="/login">Log In</a>
         </div>
     </div>
 

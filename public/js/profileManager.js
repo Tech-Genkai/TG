@@ -111,23 +111,25 @@ const profileManager = {
         try {
             const formData = new FormData();
             formData.append('profilePic', file);
+            formData.append('username', username);
             
-            const response = await fetch('/api/user/profile/update', {
+            const response = await fetch('/upload-profile-pic', {
                 method: 'POST',
-                headers: {
-                    'x-username': username
-                },
                 body: formData
             });
 
             const data = await response.json();
-            if (data.error) throw new Error(data.error);
+            if (!data.success) throw new Error(data.error || 'Upload failed');
+            
+            // Update profile data with new picture URL
+            this.profileData.profilePic = data.profilePic;
             
             // Trigger profile update event
             window.dispatchEvent(new Event('profileUpdated'));
             return true;
         } catch (error) {
             console.error('Error updating profile picture:', error);
+            notifications.error('Upload Failed', 'Failed to upload profile picture. Please try again.');
             return false;
         }
     },

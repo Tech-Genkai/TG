@@ -31,7 +31,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 5px 20px;
+    padding: 2px 20px;
     z-index: 1;
     border-radius: 5px;
 }
@@ -135,6 +135,7 @@ body {
     width: 150px;
     height: calc(100vh - 75px); /* Full height minus navbar */
     backdrop-filter: blur(10px);
+    background-color: rgba(18, 18, 25, 0.4);
     padding: 20px;
     display: flex;
     flex-direction: column;

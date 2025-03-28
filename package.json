@@ -4,10 +4,13 @@
     "dev": "nodemon src/index.js"
   },
   "dependencies": {
+    "axios": "^1.8.4",
     "bcrypt": "^5.1.1",
+    "cloudinary": "^2.6.0",
     "dompurify": "^3.2.4",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "form-data": "^4.0.2",
     "hbs": "^4.2.0",
     "jsonwebtoken": "^9.0.2",
     "mongod": "^2.0.0",

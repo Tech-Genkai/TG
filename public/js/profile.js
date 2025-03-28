@@ -107,13 +107,14 @@ function setupEventListeners() {
         });
     }
     
-    // Edit profile picture button
-    const editProfilePicBtn = document.getElementById('editProfilePic');
+    // Profile picture click handler
+    const profilePic = document.getElementById('profilePic');
     const uploadPicModal = document.getElementById('uploadPicModal');
     const cancelUploadBtn = document.getElementById('cancelUploadPic');
     
-    if (editProfilePicBtn && uploadPicModal) {
-        editProfilePicBtn.addEventListener('click', function() {
+    if (profilePic && uploadPicModal) {
+        profilePic.style.cursor = 'pointer';
+        profilePic.addEventListener('click', function() {
             // Reset file input and preview when opening modal
             const fileInput = document.getElementById('profilePicFile');
             const previewImg = document.querySelector('#imagePreview img');
@@ -500,55 +501,51 @@ async function updateProfile() {
 
 // Handle profile picture upload
 async function uploadProfilePicture() {
-    const fileInput = document.getElementById('profilePicFile');
-    
-    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        notifications.error('No File Selected', 'Please select an image to upload');
+    try {
+        const fileInput = document.getElementById('profilePicFile');
+        const file = fileInput.files[0];
         
-        // Reset upload button
-        const uploadButton = document.getElementById('uploadPicButton');
-        if (uploadButton) {
-            uploadButton.disabled = true;
-            uploadButton.innerHTML = '<i class="bi bi-cloud-upload"></i> Upload';
-            uploadButton.classList.remove('loading');
+        if (!file) {
+            notifications.error('No File Selected', 'Please select an image file to upload');
+            return;
         }
         
-        return;
-    }
-    
-    const file = fileInput.files[0];
-    
-    try {
+        // Validate file type
+        if (!file.type.match(/image\/(jpeg|jpg|png|gif)/i)) {
+            notifications.error('Invalid File', 'Please select a valid image file (JPG, PNG, or GIF)');
+            return;
+        }
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            notifications.error('File Too Large', 'The image must be smaller than 5MB');
+            return;
+        }
+        
+        // Upload the file
         const success = await profileManager.updateProfilePicture(file);
         
         if (success) {
             // Close the modal
             const uploadPicModal = document.getElementById('uploadPicModal');
-            if (uploadPicModal) uploadPicModal.style.display = 'none';
+            if (uploadPicModal) {
+                uploadPicModal.style.display = 'none';
+            }
             
-            // Show success notification
-            notifications.success('Picture Updated', 'Your profile picture has been updated successfully');
-            
-            // Reset file input
-            fileInput.value = '';
-            
-            // Reset file name display
-            const fileNameDisplay = document.getElementById('selectedFileName');
-            if (fileNameDisplay) fileNameDisplay.textContent = 'No file selected';
-        } else {
-            notifications.error('Upload Failed', 'Failed to upload profile picture. Please try again.');
+            // Show success message
+            notifications.success('Success', 'Profile picture updated successfully');
         }
     } catch (error) {
         console.error('Error uploading profile picture:', error);
-        notifications.error('Upload Failed', 'An error occurred while uploading your profile picture');
-    }
-    
-    // Reset upload button
-    const uploadButton = document.getElementById('uploadPicButton');
-    if (uploadButton) {
-        uploadButton.disabled = true;
-        uploadButton.innerHTML = '<i class="bi bi-cloud-upload"></i> Upload';
-        uploadButton.classList.remove('loading');
+        notifications.error('Upload Failed', 'Failed to upload profile picture. Please try again.');
+    } finally {
+        // Reset the upload button state
+        const uploadButton = document.getElementById('uploadPicButton');
+        if (uploadButton) {
+            uploadButton.disabled = false;
+            uploadButton.innerHTML = '<i class="bi bi-cloud-upload"></i> Upload';
+            uploadButton.classList.remove('loading');
+        }
     }
 }
 

@@ -7,6 +7,14 @@ const crypto = require('crypto')
 const http = require('http')
 const socketIo = require('socket.io')
 const sanitizeHtml = require('sanitize-html')
+const cloudinary = require('cloudinary').v2
+
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: 'dwivlcbff',
+    api_key: '412513514561222',
+    api_secret: 'D6qyjK57GTS2nbiDw7djssokh7Q'
+});
 
 // Create HTTP server and Socket.io instance
 const server = http.createServer(app)
@@ -56,20 +64,8 @@ function sanitizeText(text) {
     return sanitized;
 }
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '../public/uploads/'))
-    },
-    filename: function (req, file, cb) {
-        // Generate random filename
-        const randomString = crypto.randomBytes(16).toString('hex');
-        const timestamp = Date.now();
-        const extension = path.extname(file.originalname);
-        const filename = `${timestamp}-${randomString}${extension}`;
-        cb(null, filename);
-    }
-})
+// Configure multer for memory storage (temporary storage before uploading to Cloudinary)
+const storage = multer.memoryStorage()
 
 // Add file filter to only accept images
 const fileFilter = (req, file, cb) => {
@@ -404,36 +400,63 @@ app.get("/api/user/profile", async(req, res) => {
     }
 });
 
-// Add endpoint to update profile data
-app.post("/api/user/profile/update", upload.single('profilePic'), async(req, res) => {
+// Update the profile picture upload endpoint
+app.post("/upload-profile-pic", upload.single('profilePic'), async (req, res) => {
     try {
-        const username = req.headers['x-username'];
+        if (!req.file) {
+            return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        const username = req.body.username;
         if (!username) {
-            return res.status(401).json({ error: "User not authenticated" });
+            return res.status(400).json({ error: "Username is required" });
         }
 
-        const updateData = {};
-        
-        // Only include fields that were provided
-        if (req.body.displayName) updateData.displayName = req.body.displayName;
-        if (req.body.gender) updateData.gender = req.body.gender;
-        if (req.body.dateOfBirth) updateData.dateOfBirth = req.body.dateOfBirth;
-        
-        // Handle profile picture upload
-        if (req.file) {
-            updateData.profilePic = '/uploads/' + req.file.filename;
+        // Get the user's current profile picture URL
+        const user = await collection.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
         }
 
-        // Update the user's profile in the database
+        // If user has an existing profile picture on Cloudinary, delete it
+        if (user.profilePic && user.profilePic.includes('cloudinary.com')) {
+            try {
+                // Extract public_id from the Cloudinary URL
+                const urlParts = user.profilePic.split('/');
+                const publicId = urlParts[urlParts.length - 1].split('.')[0];
+                
+                // Delete the old image from Cloudinary
+                await cloudinary.uploader.destroy(`profile_pics/${publicId}`);
+                console.log('Deleted old profile picture:', publicId);
+            } catch (deleteError) {
+                console.error('Error deleting old profile picture:', deleteError);
+                // Continue with upload even if deletion fails
+            }
+        }
+
+        // Convert buffer to base64
+        const b64 = Buffer.from(req.file.buffer).toString("base64");
+        const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+
+        // Upload to Cloudinary
+        const uploadResponse = await cloudinary.uploader.upload(dataURI, {
+            folder: 'profile_pics',
+            resource_type: 'auto'
+        });
+
+        // Update user's profile picture in database
         await collection.updateOne(
             { username },
-            { $set: updateData }
+            { $set: { profilePic: uploadResponse.secure_url } }
         );
 
-        res.json({ success: true, message: "Profile updated successfully" });
+        res.json({ 
+            success: true, 
+            profilePic: uploadResponse.secure_url 
+        });
     } catch (error) {
-        console.error('Error updating profile:', error);
-        res.status(500).json({ error: "Error updating profile data" });
+        console.error('Error uploading profile picture:', error);
+        res.status(500).json({ error: "Error uploading profile picture" });
     }
 });
 
@@ -460,14 +483,31 @@ app.post("/register", upload.single('profilePic'), async(req, res) => {
             displayName: req.body.displayName,
             gender: req.body.gender,
             dateOfBirth: req.body.dateOfBirth,
-            registrationStatus: 'active', // Update status to active
-            profilePic: '/images/default-profile.png' // Set default profile picture
+            registrationStatus: 'active' // Update status to active
         };
 
         // Handle profile picture upload
         if (req.file) {
-            console.log('Profile picture uploaded:', req.file);
-            data.profilePic = '/uploads/' + req.file.filename;
+            try {
+                // Convert buffer to base64
+                const b64 = Buffer.from(req.file.buffer).toString("base64");
+                const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+
+                // Upload to Cloudinary
+                const uploadResponse = await cloudinary.uploader.upload(dataURI, {
+                    folder: 'profile_pics',
+                    resource_type: 'auto'
+                });
+
+                data.profilePic = uploadResponse.secure_url;
+            } catch (uploadError) {
+                console.error('Error uploading profile picture:', uploadError);
+                // If upload fails, use default profile picture
+                data.profilePic = '/images/default-profile.png';
+            }
+        } else {
+            // If no profile picture uploaded, use default
+            data.profilePic = '/images/default-profile.png';
         }
 
         // Update user profile in database
@@ -479,16 +519,11 @@ app.post("/register", upload.single('profilePic'), async(req, res) => {
         // Send success response with redirect script
         res.send(`
             <script>
-                // Remove the pending registration flag
+                // Remove registration pending flag
                 localStorage.removeItem('registrationPending');
                 
                 // Redirect to home page
                 window.location.href = '/';
-                
-                // Fallback redirect
-                setTimeout(function() {
-                    window.location.replace('/');
-                }, 1000);
             </script>
         `);
     } catch (error) {
@@ -496,11 +531,6 @@ app.post("/register", upload.single('profilePic'), async(req, res) => {
         res.status(500).send(`
             <script>
                 notifications.error('Registration Failed', 'An error occurred during registration. Please try again.');
-                
-                // Keep user on the registration page to try again
-                setTimeout(function() {
-                    window.location.reload();
-                }, 3000);
             </script>
         `);
     }
