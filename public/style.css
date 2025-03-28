@@ -216,14 +216,15 @@ body {
 
 .feed {
     position: fixed;
-    top: 70px;
-    left: 197px;
+    top: 58px;
+    left: 185px;
     height: calc(100vh - 90px);
     width: calc(100% - 450px);
     display: flex;
     padding: 10px;
     z-index: 0;
     border-radius: 5px;
+    transition: all 0.3s ease-out;
     overflow: hidden;
 }
 
@@ -238,7 +239,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    z-index: 1;
+    z-index: 0;
     color: #fff;
     transition: all 0.3s ease-out;
     border-radius: 5px;
@@ -273,6 +274,7 @@ body {
     }
 
     .trend {
+        transition: all 0.3s ease-out;
         display: none;
     }
 
@@ -292,10 +294,6 @@ body {
         width: 30px;
     }
 
-    .sidebar a:last-child {
-        margin-top: auto;
-        margin-bottom: 27px;
-    }
     
     .sidebar a span{
         display: none; /* Hide text on small screens */
