@@ -182,8 +182,8 @@ body {
 
 /* Make profile picture circular */
 .sidebar a[href="/profile"] img {
-    width: 24px;
-    height: 24px;
+    width: 27px;
+    height: 27px;
     border-radius: 50%;
     object-fit: cover;
     border: 1px solid #ffffff80;
@@ -313,10 +313,13 @@ body {
     }
     
     .sidebar a img {
+        object-fit: contain;
         width: 30px;
         height: 30px;
         transition: all 0.3s ease-out;
-        padding-left: 10px;
+    }
+    .sidebar a > p.nav-name {
+        display: none;
     }
 
     .message {
