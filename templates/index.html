@@ -43,11 +43,19 @@
             </div>
             <div id="messages" class="chat-messages"></div>
             <div class="chat-input-container">
+                <button id="attachment-btn" class="chat-btn" title="Attach file">
+                    <i class="bi bi-paperclip"></i>
+                </button>
                 <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+                <button id="emoji-btn" class="chat-btn" title="Add emoji">
+                    <i class="bi bi-emoji-smile"></i>
+                </button>
                 <button id="send-message" class="send-btn">
                     <i class="bi bi-send-fill"></i>
                 </button>
+                <input type="file" id="file-input" accept="image/*,video/*" style="display: none;">
             </div>
+            <div id="emoji-picker" class="emoji-picker" style="display: none;"></div>
         </div>
     </div>
 

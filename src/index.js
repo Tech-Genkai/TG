@@ -68,11 +68,11 @@ function sanitizeText(text) {
 // Configure multer for memory storage (temporary storage before uploading to Cloudinary)
 const storage = multer.memoryStorage()
 
-// Add file filter to only accept images
+// Add file filter to accept images and videos
 const fileFilter = (req, file, cb) => {
-    // Accept images only
-    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-        return cb(new Error('Only image files are allowed!'), false);
+    // Accept images and videos
+    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+        return cb(new Error('Only image and video files are allowed!'), false);
     }
     cb(null, true);
 };
@@ -823,7 +823,8 @@ io.on('connection', async (socket) => {
                     displayName: userDisplayNames.get(msg.username) || msg.username,
                     profilePic: userProfilePics.get(msg.username) || '/images/default-profile.png',
                     text: msg.text,
-                    timestamp: msg.timestamp
+                    timestamp: msg.timestamp,
+                    media: msg.media || null
                 });
             }
         });
@@ -836,33 +837,41 @@ io.on('connection', async (socket) => {
     
     // Handle chat messages
     socket.on('chat message', async (msg) => {
-        // Sanitize message text
-        const sanitizedText = sanitizeText(msg.text);
-        
-        const messageData = {
-            username: socket.username,
-            displayName: socket.displayName,
-            profilePic: socket.profilePic,
-            text: sanitizedText,
-            timestamp: new Date()
-        };
-        
-        // Save the message to the database
         try {
-            const newMessage = new Message({
-                username: messageData.username,
-                text: messageData.text,
-                timestamp: messageData.timestamp,
+            // Create message object without media
+            const messageData = {
+                username: socket.username,
+                text: msg.text || '',
+                timestamp: new Date(),
                 type: 'user'
-            });
-            
-            await newMessage.save();
+            };
+
+            // Add media if present
+            if (msg.media) {
+                messageData.media = {
+                    url: msg.media.url,
+                    type: msg.media.type,
+                    name: msg.media.name
+                };
+            }
+
+            // Save to database
+            const message = new Message(messageData);
+            await message.save();
+
+            // Add user info to the message data for broadcasting
+            const broadcastData = {
+                ...messageData,
+                displayName: socket.displayName,
+                profilePic: socket.profilePic
+            };
+
+            // Broadcast to all clients
+            io.emit('chat message', broadcastData);
         } catch (error) {
             console.error('Error saving message:', error);
+            socket.emit('error', 'Failed to send message');
         }
-        
-        // Broadcast the message to all connected clients
-        io.emit('chat message', messageData);
     });
     
     // Handle private messages
@@ -1673,3 +1682,31 @@ const PORT = process.env.PORT || 4000;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running at http://localhost:${PORT}`);
 })
+
+// Add route for media upload
+app.post("/upload-media", upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        // Convert buffer to base64
+        const b64 = Buffer.from(req.file.buffer).toString("base64");
+        const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+
+        // Upload to Cloudinary
+        const uploadResponse = await cloudinary.uploader.upload(dataURI, {
+            folder: "chat_media",
+            resource_type: "auto" // Automatically detect resource type
+        });
+
+        res.json({ 
+            url: uploadResponse.secure_url,
+            type: req.file.mimetype
+        });
+
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ error: "Failed to upload file" });
+    }
+});

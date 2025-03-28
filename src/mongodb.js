@@ -50,7 +50,7 @@ const MessageSchema = new mongoose.Schema({
     },
     text: {
         type: String,
-        required: true
+        required: false
     },
     timestamp: {
         type: Date,
@@ -60,6 +60,11 @@ const MessageSchema = new mongoose.Schema({
         type: String,
         enum: ['user', 'system'],
         default: 'user'
+    },
+    media: {
+        url: { type: String },
+        type: { type: String },
+        name: { type: String }
     }
 })
 
