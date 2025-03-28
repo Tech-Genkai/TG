@@ -166,7 +166,7 @@ body {
 
 .sidebar a:nth-last-child(1) {
     margin-top: 0px;
-    margin-bottom: 30px;   /*fix last child*/
+    margin-bottom: 22px;   /*fix last child*/
 }
 
 .sidebar a:nth-last-child(2) {
@@ -175,8 +175,8 @@ body {
 }
 
 .sidebar a img {
-    width: 24px;
-    height: 24px;
+    width: 27px;
+    height: 27px;
     transition: transform 0.3s ease-out, filter 0.3s ease-out;
 }
 
@@ -216,7 +216,7 @@ body {
 
 .feed {
     position: fixed;
-    top: 60px;
+    top: 50px;
     left: 240px;
     width: calc(100% - 480px);
     height: calc(100vh - 60px);
@@ -290,7 +290,7 @@ body {
 
     .feed, .wrapper {
         position: fixed;
-        left: 60px;
+        left: 45px;
         width: calc(100% - 60px);
         height: calc(100vh - 60px);
         padding: 10px;
