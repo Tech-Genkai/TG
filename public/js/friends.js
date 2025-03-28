@@ -83,12 +83,12 @@ function initializeTabs() {
 }
 
 // Load a specific user's friends
-async function loadUserFriends(targetUsername) {
+async function loadUserFriends(targetUsername, page = 1) {
     try {
-        console.log(`Fetching friends for user: ${targetUsername}`);
+        console.log(`Fetching friends for user: ${targetUsername} (page ${page})`);
         const currentUsername = localStorage.getItem('username');
         
-        const response = await fetch(`/api/friends/${encodeURIComponent(targetUsername)}`, {
+        const response = await fetch(`/api/friends/${encodeURIComponent(targetUsername)}?page=${page}&limit=24`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -134,11 +134,11 @@ async function loadUserFriends(targetUsername) {
         // Update friend count
         const friendCount = document.getElementById('friend-count');
         if (friendCount) {
-            friendCount.textContent = data.friends ? data.friends.length : 0;
+            friendCount.textContent = data.pagination ? data.pagination.total : (data.friends ? data.friends.length : 0);
         }
         
         // Update the UI with friends - use a different message for no friends
-        renderFriendsList(data.friends, targetUsername !== currentUsername ? targetUsername : null);
+        renderFriendsList(data.friends, targetUsername !== currentUsername ? targetUsername : null, page > 1, data.pagination);
     } catch (error) {
         console.error('Error loading user friends:', error);
         notifications.error('Error', 'Failed to load friends list');
@@ -146,11 +146,11 @@ async function loadUserFriends(targetUsername) {
 }
 
 // Load friends list
-async function loadFriends() {
+async function loadFriends(page = 1) {
     try {
         const username = localStorage.getItem('username');
         
-        const response = await fetch('/api/friends', {
+        const response = await fetch(`/api/friends?page=${page}&limit=24`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -167,11 +167,11 @@ async function loadFriends() {
         // Update friend count
         const friendCount = document.getElementById('friend-count');
         if (friendCount) {
-            friendCount.textContent = data.friends ? data.friends.length : 0;
+            friendCount.textContent = data.pagination ? data.pagination.total : (data.friends ? data.friends.length : 0);
         }
         
         // Update the UI with friends
-        renderFriendsList(data.friends);
+        renderFriendsList(data.friends, null, page > 1, data.pagination);
     } catch (error) {
         console.error('Error loading friends:', error);
         notifications.error('Error', 'Failed to load friends list');
@@ -212,7 +212,7 @@ async function loadFriendRequests() {
 }
 
 // Render friends list
-function renderFriendsList(friends, otherUsername = null) {
+function renderFriendsList(friends, otherUsername = null, isAppending = false, pagination = null) {
     const friendsListElement = document.getElementById('friendsList');
     
     if (!friendsListElement) {
@@ -220,20 +220,30 @@ function renderFriendsList(friends, otherUsername = null) {
         return;
     }
     
-    // Clear current content
-    friendsListElement.innerHTML = '';
+    // Clear current content if not appending
+    if (!isAppending) {
+        friendsListElement.innerHTML = '';
+    } else {
+        // Remove the load more button if it exists
+        const existingLoadMore = friendsListElement.querySelector('.load-more-container');
+        if (existingLoadMore) {
+            existingLoadMore.remove();
+        }
+    }
     
     if (!friends || friends.length === 0) {
-        const noFriendsElement = document.createElement('div');
-        noFriendsElement.className = 'no-friends';
-        
-        if (otherUsername) {
-            noFriendsElement.textContent = `${otherUsername} doesn't have any friends yet`;
-        } else {
-            noFriendsElement.textContent = "You haven't added any friends yet";
+        if (!isAppending) {
+            const noFriendsElement = document.createElement('div');
+            noFriendsElement.className = 'no-friends';
+            
+            if (otherUsername) {
+                noFriendsElement.textContent = `${otherUsername} doesn't have any friends yet`;
+            } else {
+                noFriendsElement.textContent = "You haven't added any friends yet";
+            }
+            
+            friendsListElement.appendChild(noFriendsElement);
         }
-        
-        friendsListElement.appendChild(noFriendsElement);
         return;
     }
     
@@ -273,6 +283,30 @@ function renderFriendsList(friends, otherUsername = null) {
             });
         }
     });
+    
+    // Add "Load More" button if there are more pages
+    if (pagination && pagination.page < pagination.pages) {
+        const loadMoreContainer = document.createElement('div');
+        loadMoreContainer.className = 'load-more-container';
+        loadMoreContainer.style.width = '100%';
+        loadMoreContainer.style.textAlign = 'center';
+        loadMoreContainer.style.marginTop = '1rem';
+        
+        const loadMoreBtn = document.createElement('button');
+        loadMoreBtn.className = 'action-btn';
+        loadMoreBtn.textContent = 'Load More';
+        loadMoreBtn.addEventListener('click', () => {
+            const nextPage = pagination.page + 1;
+            if (otherUsername) {
+                loadUserFriends(otherUsername, nextPage);
+            } else {
+                loadFriends(nextPage);
+            }
+        });
+        
+        loadMoreContainer.appendChild(loadMoreBtn);
+        friendsListElement.appendChild(loadMoreContainer);
+    }
 }
 
 // Render friend requests

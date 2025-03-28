@@ -1,3 +1,4 @@
+require('dotenv').config();
 const mongoose = require("mongoose")
 
 // Use either local MongoDB or MongoDB Atlas

@@ -42,6 +42,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!response.ok) {
                 console.log('Login failed:', data.error);
+                
+                // Special handling for users with pending registration
+                if (data.pendingRegistration) {
+                    console.log('User has pending registration, redirecting to registration page');
+                    // Store username and login status
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', usernameInput.value);
+                    localStorage.setItem('registrationPending', 'true');
+                    
+                    // Redirect to registration page
+                    window.location.href = '/register';
+                    return;
+                }
+                
                 // Show error notification
                 if (typeof notifications !== 'undefined') {
                     console.log('Showing error notification');

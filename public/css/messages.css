@@ -184,6 +184,7 @@
     display: none;
     flex-direction: column;
     height: 100%;
+    overflow: hidden;
 }
 
 .chat-header {

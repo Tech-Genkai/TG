@@ -109,11 +109,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 // If validation passes, submit the form with error handling
-                const formData = new FormData(this);
+                const formData = {
+                    username: username,
+                    password: password
+                };
                 
                 const signupResponse = await fetch('/signup', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
                 });
                 
                 if (!signupResponse.ok) {
@@ -127,7 +133,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // If everything is successful, the server will handle the redirect
                 const responseHtml = await signupResponse.text();
-                document.body.innerHTML = responseHtml;
+                console.log("Signup successful, processing response");
+                
+                try {
+                    // Extract the script content
+                    const scriptMatch = responseHtml.match(/<script>([\s\S]*?)<\/script>/);
+                    if (scriptMatch && scriptMatch[1]) {
+                        console.log("Script content found, executing...");
+                        // Execute the script content
+                        eval(scriptMatch[1]);
+                    } else {
+                        console.warn("No script content found in response, using fallback redirect");
+                        // Fallback direct redirect if can't extract script
+                        localStorage.setItem('isLoggedIn', 'true');
+                        localStorage.setItem('username', formData.username);
+                        localStorage.setItem('registrationPending', 'true');
+                        
+                        window.location.href = '/register';
+                    }
+                } catch (err) {
+                    console.error('Error executing redirect script:', err);
+                    // Log the response for debugging
+                    console.log('Response HTML:', responseHtml);
+                    
+                    // Fallback redirect with most basic approach
+                    try {
+                        localStorage.setItem('isLoggedIn', 'true');
+                        localStorage.setItem('username', formData.username);
+                        localStorage.setItem('registrationPending', 'true');
+                        window.location.replace('/register');
+                    } catch (storageErr) {
+                        console.error('Error setting localStorage:', storageErr);
+                        // Last resort: just navigate
+                        window.location.href = '/register';
+                    }
+                }
             } catch (error) {
                 console.error('Error during signup:', error);
                 notifications.error(
