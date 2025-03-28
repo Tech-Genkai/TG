@@ -8,6 +8,7 @@ const http = require('http')
 const socketIo = require('socket.io')
 const sanitizeHtml = require('sanitize-html')
 const cloudinary = require('cloudinary').v2
+const bcrypt = require('bcrypt')
 
 // Configure Cloudinary
 cloudinary.config({
@@ -177,6 +178,49 @@ app.post("/check-username", async(req, res) => {
     } catch (error) {
         console.error('Error checking username:', error);
         res.status(500).json({ error: "Error checking username availability" });
+    }
+});
+
+// Add endpoint for changing password
+app.post("/change-password", async(req, res) => {
+    try {
+        const { username, currentPassword, newPassword } = req.body;
+
+        // Validate input
+        if (!username || !currentPassword || !newPassword) {
+            return res.status(400).json({ error: "All fields are required" });
+        }
+
+        // Validate new password length
+        if (newPassword.length < 8) {
+            return res.status(400).json({ error: "New password must be at least 8 characters long" });
+        }
+
+        // Find user
+        const user = await collection.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Verify current password
+        const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+        if (!isValidPassword) {
+            return res.status(401).json({ error: "Current password is incorrect" });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password
+        await collection.updateOne(
+            { username },
+            { $set: { password: hashedPassword } }
+        );
+
+        res.json({ message: "Password updated successfully" });
+    } catch (error) {
+        console.error('Error changing password:', error);
+        res.status(500).json({ error: "Error changing password" });
     }
 });
 

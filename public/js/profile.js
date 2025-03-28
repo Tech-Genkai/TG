@@ -107,6 +107,53 @@ function setupEventListeners() {
         });
     }
     
+    // Change password button and modal
+    const changePasswordBtn = document.getElementById('changePassword');
+    const changePasswordModal = document.getElementById('changePasswordModal');
+    const cancelChangePasswordBtn = document.getElementById('cancelChangePassword');
+    const changePasswordForm = document.getElementById('changePasswordForm');
+
+    if (changePasswordBtn && changePasswordModal) {
+        changePasswordBtn.addEventListener('click', function() {
+            changePasswordModal.style.display = 'flex';
+        });
+    }
+
+    if (cancelChangePasswordBtn && changePasswordModal) {
+        cancelChangePasswordBtn.addEventListener('click', function() {
+            changePasswordModal.style.display = 'none';
+            changePasswordForm.reset();
+        });
+    }
+
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await changePassword();
+        });
+    }
+
+    // Add password toggle functionality
+    const togglePasswordButtons = document.querySelectorAll('.toggle-password');
+    togglePasswordButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const passwordInput = document.getElementById(targetId);
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.classList.remove('bi-eye-slash-fill');
+                this.classList.add('bi-eye-fill');
+                this.classList.add('active');
+            } else {
+                passwordInput.type = 'password';
+                this.classList.remove('bi-eye-fill');
+                this.classList.add('bi-eye-slash-fill');
+                this.classList.remove('active');
+            }
+        });
+    });
+    
     // Profile picture click handler
     const profilePic = document.getElementById('profilePic');
     const uploadPicModal = document.getElementById('uploadPicModal');
@@ -570,4 +617,51 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-}); 
+});
+
+async function changePassword() {
+    try {
+        const username = localStorage.getItem('username');
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        // Validate passwords match
+        if (newPassword !== confirmPassword) {
+            notifications.error('Error', 'New passwords do not match');
+            return;
+        }
+
+        // Validate password length
+        if (newPassword.length < 8) {
+            notifications.error('Error', 'New password must be at least 8 characters long');
+            return;
+        }
+
+        const response = await fetch('/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username,
+                currentPassword,
+                newPassword
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            notifications.success('Success', 'Password changed successfully');
+            // Close modal and reset form
+            document.getElementById('changePasswordModal').style.display = 'none';
+            document.getElementById('changePasswordForm').reset();
+        } else {
+            notifications.error('Error', data.error || 'Failed to change password');
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        notifications.error('Error', 'Failed to change password');
+    }
+} 

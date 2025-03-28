@@ -297,28 +297,147 @@ input[type="file"] {
 
 /* Edit profile button */
 .edit-profile-btn {
-    background-color: #333;
+    background-color: #1a73e8;
     color: white;
     border: none;
-    border-radius: 20px;
     padding: 10px 20px;
+    border-radius: 5px;
     cursor: pointer;
-    margin-top: 20px;
-    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     gap: 8px;
-    font-weight: bold;
-}
-
-.edit-profile-btn i {
-    color: var(--dragon);
+    margin-top: 20px;
+    transition: background-color 0.3s;
 }
 
 .edit-profile-btn:hover {
+    background-color: #1557b0;
+}
+
+.change-password-btn {
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    transition: all 0.3s ease-out;
+    font-size: 14px;
+    width: fit-content;
+}
+
+.change-password-btn:hover {
     background-color: #444;
-    transform: translateY(-2px);
     box-shadow: 0 0 10px var(--dragon);
+}
+
+.change-password-btn i {
+    color: var(--dragon);
+}
+
+/* Password Change Modal Styles */
+#changePasswordModal .modal-content {
+    background: rgba(18, 18, 25, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(242, 24, 217, 0.3);
+    box-shadow: 0 0 30px rgba(242, 24, 217, 0.4);
+}
+
+#changePasswordModal h2 {
+    color: var(--dragon);
+    text-shadow: 0 0 8px rgba(242, 24, 217, 0.6);
+}
+
+#changePasswordModal label {
+    color: #fff;
+    font-weight: bold;
+}
+
+/* Password input container styles */
+.password-input-container {
+    position: relative;
+    width: 100%;
+}
+
+.password-input-container input {
+    width: 100%;
+    padding-right: 40px;
+    background: rgba(18, 18, 25, 0.6);
+    border: 1px solid rgba(242, 24, 217, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    color: #fff;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.password-input-container input:focus {
+    outline: none;
+    border-color: var(--dragon);
+    box-shadow: 0 0 15px rgba(242, 24, 217, 0.4);
+    background-color: rgba(18, 18, 25, 0.8);
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #888;
+    transition: all 0.3s ease;
+    padding: 5px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.toggle-password:hover {
+    color: var(--dragon);
+    background-color: rgba(242, 24, 217, 0.1);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.toggle-password.active {
+    color: var(--dragon);
+    text-shadow: 0 0 8px rgba(242, 24, 217, 0.6);
+}
+
+/* Update modal button styles */
+#changePasswordModal .form-actions button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+#changePasswordModal .form-actions button[type="button"] {
+    background-color: #333;
+    color: #fff;
+}
+
+#changePasswordModal .form-actions button[type="button"]:hover {
+    background-color: #444;
+    box-shadow: 0 0 10px rgba(242, 24, 217, 0.4);
+}
+
+#changePasswordModal .form-actions button[type="submit"] {
+    background-color: var(--dragon);
+    color: white;
+}
+
+#changePasswordModal .form-actions button[type="submit"]:hover {
+    box-shadow: 0 0 15px rgba(242, 24, 217, 0.6);
+    transform: translateY(-2px);
 }
 
 .profile-link {
