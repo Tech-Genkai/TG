@@ -8,7 +8,6 @@ const http = require('http')
 const socketIo = require('socket.io')
 const sanitizeHtml = require('sanitize-html')
 const cloudinary = require('cloudinary').v2
-const bcrypt = require('bcrypt')
 
 // Configure Cloudinary
 cloudinary.config({
@@ -203,18 +202,14 @@ app.post("/change-password", async(req, res) => {
         }
 
         // Verify current password
-        const isValidPassword = await bcrypt.compare(currentPassword, user.password);
-        if (!isValidPassword) {
+        if (currentPassword !== user.password) {
             return res.status(401).json({ error: "Current password is incorrect" });
         }
-
-        // Hash new password
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         // Update password
         await collection.updateOne(
             { username },
-            { $set: { password: hashedPassword } }
+            { $set: { password: newPassword } }
         );
 
         res.json({ message: "Password updated successfully" });
