@@ -397,7 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (emojiPicker.style.display === 'block') {
             emojiPicker.style.display = 'none';
         } else {
-            initializeEmojiPicker();
+                initializeEmojiPicker();
             
             // Position the emoji picker
             const inputRect = messageInput.getBoundingClientRect();
@@ -420,9 +420,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle file attachment
     if (attachmentButton) {
-        attachmentButton.addEventListener('click', () => {
-            fileInput.click();
-        });
+    attachmentButton.addEventListener('click', () => {
+        fileInput.click();
+    });
     }
 
     // Handle file input
