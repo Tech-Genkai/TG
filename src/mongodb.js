@@ -91,6 +91,10 @@ const DirectMessageSchema = new mongoose.Schema({
     read: {
         type: Boolean,
         default: false
+    },
+    media: {
+        url: { type: String },
+        type: { type: String }
     }
 })
 

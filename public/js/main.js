@@ -304,15 +304,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeSearch();
 });
 
-// Run on page load
-window.onload = function() {
-    // First check authentication before doing anything else
-    if (checkLoginStatus()) {
-        showSuccessModal();
-        // Profile updates are now handled by profileManager
-    }
-};
-
 // Add event listener for page visibility changes (handles when user uses back button)
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {

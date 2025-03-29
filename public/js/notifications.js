@@ -75,6 +75,10 @@ class NotificationSystem {
     warning(title, message, timeout) {
         return this.show(title, message, 'warning', timeout);
     }
+
+    info(title, message, timeout) {
+        return this.show(title, message, 'info', timeout);
+    }
 }
 
 // Create global notification instance

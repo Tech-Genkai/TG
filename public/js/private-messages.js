@@ -20,10 +20,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const userPicElement = document.getElementById('chat-user-pic');
     const userProfileLink = document.getElementById('user-profile-link');
     const conversationSearchInput = document.getElementById('conversation-search');
+    const mediaUploadButton = document.getElementById('media-upload');
+    const mediaInput = document.getElementById('media-input');
     
     // Current active conversation
     let activeConversation = null;
-    
+
     // Check URL for username parameter
     function checkUrlForUsername() {
         const path = window.location.pathname;
@@ -33,6 +35,69 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return null;
     }
+    
+    // Handle media upload
+    mediaUploadButton.addEventListener('click', () => {
+        mediaInput.click();
+    });
+    
+    mediaInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+            notifications.error('File Too Large', 'Maximum file size is 5MB');
+            return;
+        }
+        
+        // Check file type
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+            notifications.error('Invalid File Type', 'Only images and videos are allowed');
+            return;
+        }
+        
+        // Create form data
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        // Show upload started notification
+        const notificationId = notifications.info('Uploading Media', 'Starting upload...', 0);
+        
+        try {
+            const response = await fetch('/upload-media', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+            
+            const data = await response.json();
+            
+            // Update notification to success and auto-close after 3 seconds
+            notifications.success('Upload Complete', 'Media uploaded successfully', notificationId, 3000);
+            
+            // Send the message with media
+            socket.emit('private message', {
+                recipient: activeConversation,
+                text: messageInput.value.trim() || ' ',
+                media: {
+                    url: data.url,
+                    type: data.type
+                }
+            });
+            
+            // Clear the input
+            messageInput.value = '';
+            mediaInput.value = '';
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            notifications.error('Upload Failed', 'Failed to upload media', notificationId, 5000);
+        }
+    });
     
     // Connect to Socket.io
     const socket = io({
@@ -327,49 +392,51 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Check if this message should be grouped with the previous one
         if (shouldGroupMessages(currentSender, currentTime)) {
-            // Create only the message bubble for consecutive messages
             const messageElement = document.createElement('div');
             messageElement.className = 'message ' + 
                 (isOwnMessage ? 'message-own' : 'message-other') + ' consecutive-message';
             
-            // Create a span for the text content to control alignment
             const textSpan = document.createElement('span');
             textSpan.className = 'message-text';
-            textSpan.innerHTML = formatMessageText(messageText);
+            
+            // Handle media if present and valid
+            if (msg.media && typeof msg.media === 'object' && msg.media.url) {
+                const mediaElement = createMediaElement(msg.media);
+                if (mediaElement) {
+                    textSpan.appendChild(mediaElement);
+                }
+            }
+            
+            // Add text if present
+            if (msg.text && msg.text.trim()) {
+                const textNode = document.createElement('span');
+                textNode.innerHTML = formatMessageText(msg.text);
+                textSpan.appendChild(textNode);
+            }
+            
             messageElement.appendChild(textSpan);
             
-            // Find the message content container in the last wrapper
             const messageContent = lastMessageWrapper.querySelector('.message-content');
             messageContent.appendChild(messageElement);
             
-            // Update last message time
             lastMessageTime = currentTime;
-            
-            // Scroll to bottom
             scrollToBottom();
             return;
         }
         
-        // Create a new message container for a new sender or after time gap
+        // Create new message container for non-consecutive messages
         const messageContainer = document.createElement('div');
         messageContainer.className = 'message-container';
         
-        // Create message content wrapper
         const messageWrapper = document.createElement('div');
         messageWrapper.className = isOwnMessage ? 'message-wrapper own' : 'message-wrapper';
         
-        // Add profile picture
         const profilePic = document.createElement('div');
         profilePic.className = 'message-profile-pic';
         
-        // Make profile picture clickable
         const profilePicLink = document.createElement('a');
-        profilePicLink.href = isOwnMessage 
-            ? '/profile' 
-            : `/user/${msg.sender}`;
-        profilePicLink.title = `View ${isOwnMessage 
-            ? 'your' 
-            : `${msg.senderDisplayName}'s`} profile`;
+        profilePicLink.href = isOwnMessage ? '/profile' : `/user/${msg.sender}`;
+        profilePicLink.title = `View ${isOwnMessage ? 'your' : `${msg.senderDisplayName}'s`} profile`;
         
         const profileImg = document.createElement('img');
         profileImg.src = isOwnMessage 
@@ -380,26 +447,18 @@ document.addEventListener('DOMContentLoaded', function() {
         profilePicLink.appendChild(profileImg);
         profilePic.appendChild(profilePicLink);
         
-        // Create message content container
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
-        // Create header with sender name and timestamp
         const header = document.createElement('div');
         header.className = 'message-header';
         
-        // Add sender name with appropriate alignment and make it clickable
         const sender = document.createElement('a');
         sender.className = 'message-sender';
         sender.textContent = isOwnMessage ? 'You' : (msg.senderDisplayName || msg.sender);
-        sender.href = isOwnMessage 
-            ? '/profile' 
-            : `/user/${msg.sender}`;
-        sender.title = `View ${isOwnMessage 
-            ? 'your' 
-            : `${msg.senderDisplayName}'s`} profile`;
+        sender.href = isOwnMessage ? '/profile' : `/user/${msg.sender}`;
+        sender.title = `View ${isOwnMessage ? 'your' : `${msg.senderDisplayName}'s`} profile`;
         
-        // Add timestamp if available
         let timestamp;
         if (currentTime) {
             timestamp = document.createElement('span');
@@ -407,7 +466,6 @@ document.addEventListener('DOMContentLoaded', function() {
             timestamp.textContent = formatTime(new Date(currentTime));
         }
         
-        // Arrange header elements based on message ownership
         if (isOwnMessage) {
             header.style.flexDirection = 'row-reverse';
             header.style.textAlign = 'right';
@@ -424,28 +482,37 @@ document.addEventListener('DOMContentLoaded', function() {
         
         messageContent.appendChild(header);
         
-        // Add message text
         const messageElement = document.createElement('div');
         messageElement.className = 'message ' + 
             (isOwnMessage ? 'message-own' : 'message-other');
         
-        // Create a span for the text content to control alignment
         const textSpan = document.createElement('span');
         textSpan.className = 'message-text';
-        textSpan.innerHTML = formatMessageText(messageText);
-        messageElement.appendChild(textSpan);
         
+        // Handle media if present and valid
+        if (msg.media && typeof msg.media === 'object' && msg.media.url) {
+            const mediaElement = createMediaElement(msg.media);
+            if (mediaElement) {
+                textSpan.appendChild(mediaElement);
+            }
+        }
+        
+        // Add text if present
+        if (msg.text && msg.text.trim()) {
+            const textNode = document.createElement('span');
+            textNode.innerHTML = formatMessageText(msg.text);
+            textSpan.appendChild(textNode);
+        }
+        
+        messageElement.appendChild(textSpan);
         messageContent.appendChild(messageElement);
         
-        // Append profile pic and message content
         messageWrapper.appendChild(profilePic);
         messageWrapper.appendChild(messageContent);
         
-        // Add to container and scroll to bottom
         messageContainer.appendChild(messageWrapper);
         messagesContainer.appendChild(messageContainer);
         
-        // Update tracking variables
         lastMessageSender = currentSender;
         lastMessageTime = currentTime;
         lastMessageWrapper = messageWrapper;
@@ -472,8 +539,76 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to format message text for display
     function formatMessageText(text) {
-        // Use the new function that preserves emoticons and handles line breaks
+        // Use the sanitize function that preserves emoticons and handles line breaks
         return sanitizeWithEmoticonsAndLineBreaks(text);
+    }
+
+    // Function to create media element
+    function createMediaElement(media) {
+        if (!media || !media.url) {
+            console.error('Invalid media data:', media);
+            return null;
+        }
+
+        const mediaContainer = document.createElement('div');
+        mediaContainer.className = 'message-media';
+        
+        let mediaElement;
+        // Check if type is a MIME type or simple type
+        const isImage = media.type === 'image' || media.type.startsWith('image/');
+        const isVideo = media.type === 'video' || media.type.startsWith('video/');
+        
+        if (isImage) {
+            mediaElement = document.createElement('img');
+            mediaElement.src = media.url;
+            mediaElement.alt = 'Shared image';
+        } else if (isVideo) {
+            mediaElement = document.createElement('video');
+            mediaElement.src = media.url;
+            mediaElement.controls = true;
+            mediaElement.playsInline = true;
+        } else {
+            console.error('Unsupported media type:', media.type);
+            return null;
+        }
+
+        // Create media overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'media-overlay';
+        
+        const overlayContent = document.createElement('div');
+        overlayContent.className = 'media-overlay-content';
+        
+        // Create a new media element for the overlay instead of cloning
+        let overlayMediaElement;
+        if (isImage) {
+            overlayMediaElement = document.createElement('img');
+            overlayMediaElement.src = media.url;
+            overlayMediaElement.alt = 'Full size image';
+        } else if (isVideo) {
+            overlayMediaElement = document.createElement('video');
+            overlayMediaElement.src = media.url;
+            overlayMediaElement.controls = true;
+            overlayMediaElement.playsInline = true;
+        }
+        
+        overlayContent.appendChild(overlayMediaElement);
+        overlay.appendChild(overlayContent);
+
+        // Add click handler to close overlay when clicking outside media content
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+            }
+        });
+
+        // Add click handler to open overlay
+        mediaElement.onclick = () => {
+            document.body.appendChild(overlay);
+        };
+        
+        mediaContainer.appendChild(mediaElement);
+        return mediaContainer;
     }
     
     // Format time for display

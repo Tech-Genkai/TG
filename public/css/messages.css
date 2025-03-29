@@ -81,6 +81,8 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
     padding-right: 4px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
 }
 
 .conversation-item {
@@ -234,6 +236,8 @@
     scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
     box-sizing: border-box;
     padding-right: 4px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Empty state styling */
@@ -374,6 +378,14 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+/* Hide message bubble for media messages */
+.message:has(.message-media) {
+    background: none;
+    border: none;
+    padding: 0;
+    box-shadow: none;
+}
+
 .message-other {
     background-color: rgba(35, 35, 45, 0.7);
     color: #fff;
@@ -396,24 +408,26 @@
 
 /* Chat input styling */
 .chat-input-container {
-    display: flex;
     padding: 15px;
-    background-color: rgba(20, 20, 28, 0.8);
+    background-color: rgba(20, 20, 28, 0.9);
     border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 #message-input {
     flex: 1;
-    padding: 10px 12px;
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 5px;
-    background-color: rgba(255, 255, 255, 0.05);
     color: #fff;
     resize: none;
     outline: none;
+    min-height: 40px;
+    max-height: 120px;
     transition: border-color 0.2s, box-shadow 0.2s;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) inset;
-    margin-right: 10px;
 }
 
 #message-input:focus {
@@ -421,26 +435,128 @@
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
 }
 
-.send-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 5px;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+.chat-input-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.emoji-btn, .media-btn, .send-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.emoji-btn:hover, .media-btn:hover, .send-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.emoji-btn i, .media-btn i, .send-btn i {
+    font-size: 1.2rem;
+}
+
+/* Media message styling */
+.message-media {
+    position: relative;
+    max-width: 300px;
+    margin: 5px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.message-media img,
+.message-media video {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    display: block;
+    transition: transform 0.2s ease;
+}
+
+.message-media img:hover,
+.message-media video:hover {
+    transform: scale(1.02);
+}
+
+.message-media .media-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 8px 0 0 0;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.message-media:hover .media-actions {
+    opacity: 1;
+}
+
+.message-media .media-action-btn {
+    background: none;
+    border: none;
+    color: white;
     cursor: pointer;
-    transition: all 0.2s;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
 }
 
-.send-btn:hover {
-    background-color: rgba(255, 255, 255, 0.15);
+.message-media .media-action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
-.send-btn:active {
-    transform: scale(0.95);
+.message-media img.expanded,
+.message-media video.expanded {
+    max-height: 80vh;
+    width: auto;
+    max-width: 80vw;
+    margin: 0 auto;
+    display: block;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+/* Loading indicator for media upload */
+.media-upload-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    margin: 4px 0;
+}
+
+.media-upload-loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .error-message {
@@ -546,5 +662,71 @@
     .conversations, .chat-messages {
         scrollbar-width: thin;
         scrollbar-color: rgba(242, 24, 217, 0.7) rgba(26, 26, 26, 0.7);
+    }
+}
+
+/* Media overlay styles */
+.media-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    cursor: pointer;
+    opacity: 0;
+    animation: fadeIn 0.2s ease forwards;
+}
+
+.media-overlay-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform: scale(0.95);
+    animation: scaleIn 0.2s ease forwards;
+}
+
+.media-overlay-content img,
+.media-overlay-content video {
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 20px;
+}
+
+/* Ensure videos maintain aspect ratio */
+.media-overlay-content video {
+    aspect-ratio: 16/9;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.95);
+    }
+    to {
+        transform: scale(1);
     }
 } 

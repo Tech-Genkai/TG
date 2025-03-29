@@ -5,6 +5,7 @@
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/css/messages.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.18.3/index.js"></script>
     <title>TG - Messages</title>
 </head>
 
@@ -74,11 +75,19 @@
                 </div>
                 <div id="messages" class="chat-messages"></div>
                 <div class="chat-input-container">
+                    <button id="media-upload" class="media-btn" title="Upload media">
+                        <i class="bi bi-image"></i>
+                    </button>
                     <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+                    <button id="emoji-button" class="emoji-btn" title="Add emoji">
+                        <i class="bi bi-emoji-smile"></i>
+                    </button>
                     <button id="send-message" class="send-btn">
                         <i class="bi bi-send-fill"></i>
                     </button>
                 </div>
+                <div id="emoji-picker" class="emoji-picker"></div>
+                <input type="file" id="media-input" accept="image/*,video/*" style="display: none;">
             </div>
         </div>
     </div>
@@ -87,9 +96,289 @@
     <script src="/js/utils/sanitize.js"></script>
     <script src="/js/notifications.js"></script>
     <script src="/js/profileManager.js"></script>
-    <script src="/js/main.js"></script>
+    <script src="/js/main.js" type="module"></script>
     <script src="/js/private-messages.js"></script>
     <script src="/js/logout.js"></script>
+    <style>
+        .emoji-picker-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 420px;
+            background: rgba(20, 20, 28, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(242, 24, 217, 0.3);
+            overflow: hidden;
+        }
+        
+        .emoji-tabs {
+            display: flex;
+            overflow-x: auto;
+            padding: 8px;
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+        
+        .emoji-tab {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            padding: 6px 10px;
+            margin-right: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+        
+        .emoji-tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .emoji-tab.active {
+            background: rgba(242, 24, 217, 0.2);
+        }
+        
+        .emoji-grid-container {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            height: 350px;
+            background: transparent;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+        
+        .emoji-button {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .emoji-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.2);
+        }
+        
+        .emoji-picker {
+            position: fixed;
+            z-index: 9999;
+            width: 400px;
+            height: 450px;
+            display: none;
+        }
+    </style>
+    <script>
+        // Full emoji picker implementation based on the index page
+        document.addEventListener('DOMContentLoaded', function() {
+            const emojiBtn = document.getElementById('emoji-button');
+            const messageInput = document.getElementById('message-input');
+            const emojiPickerContainer = document.getElementById('emoji-picker');
+            let isPickerVisible = false;
+            
+            // Emoji categories and data - complete set from index page
+            const emojiCategories = {
+                'smileys': ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🫣', '🤗', '🫡', '🤔', '🫢', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🫨', '🫠', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🫥', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠'],
+                'people': ['👶', '👧', '🧒', '👦', '👩', '🧑', '👨', '👩‍🦱', '👨‍🦱', '👩‍🦰', '👨‍🦰', '👱‍♀️'],
+                'gestures': ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🫰', '🤟', '🤘', '🤙'],
+                'love': ['💘', '💝', '💖', '💗', '💓', '💞', '💕', '💟', '❣️', '💔', '❤️', '🧡', '💛', '💚', '💙', '💜'],
+                'animals': ['🐵', '🐒', '🦍', '🦧', '🐶', '🐕', '🦮', '🐕‍🦺', '🐩', '🐺', '🦊', '🦝', '🐱', '🐈'],
+                'nature': ['🌸', '💮', '🏵️', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷', '🌱', '🪴', '🌲', '🌳', '🌴'],
+                'food': ['🍞', '🥐', '🥖', '🫓', '🥨', '🥯', '🥞', '🧇', '🧀', '🍖', '🍗', '🥩', '🥓', '🍔'],
+                'activities': ['🎪', '🤹', '🎭', '🩰', '🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🪘', '🎷'],
+                'travel': ['🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜'],
+                'objects': ['⌚', '📱', '📲', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '🕹️', '🗜️', '💽', '💾', '💿'],
+                'symbols': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓']
+            };
+            
+            // Category icons for tabs
+            const categoryIcons = {
+                'smileys': '😊',
+                'people': '👥',
+                'gestures': '👋',
+                'love': '❤️',
+                'animals': '🐱',
+                'nature': '🌸',
+                'food': '🍔',
+                'activities': '⚽',
+                'travel': '✈️',
+                'objects': '💡',
+                'symbols': '💠'
+            };
+            
+            // Initialize emoji picker
+            function initializeEmojiPicker() {
+                try {
+                    const container = document.createElement('div');
+                    container.className = 'emoji-picker-container';
+                    
+                    // Create category tabs
+                    const tabsContainer = document.createElement('div');
+                    tabsContainer.className = 'emoji-tabs';
+                    
+                    // Create emoji grid
+                    const gridContainer = document.createElement('div');
+                    gridContainer.className = 'emoji-grid-container';
+                    
+                    // Add category tabs
+                    Object.keys(emojiCategories).forEach(category => {
+                        const tab = document.createElement('button');
+                        tab.className = 'emoji-tab';
+                        tab.dataset.category = category;
+                        tab.innerHTML = `${categoryIcons[category]} <span>${category.charAt(0).toUpperCase() + category.slice(1)}</span>`;
+                        tab.onclick = () => showEmojiCategory(category, gridContainer, tabsContainer);
+                        tabsContainer.appendChild(tab);
+                    });
+                    
+                    container.appendChild(tabsContainer);
+                    container.appendChild(gridContainer);
+                    
+                    // Clear any existing content
+                    emojiPickerContainer.innerHTML = '';
+                    emojiPickerContainer.appendChild(container);
+                    
+                    // Show first category by default
+                    const firstTab = tabsContainer.querySelector('.emoji-tab');
+                    if (firstTab) {
+                        firstTab.classList.add('active');
+                        showEmojiCategory('smileys', gridContainer, tabsContainer);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error initializing emoji picker:', error);
+                }
+            }
+            
+            // Show emoji category
+            function showEmojiCategory(category, container, tabsContainer) {
+                // Update active tab
+                if (tabsContainer) {
+                    tabsContainer.querySelectorAll('.emoji-tab').forEach(tab => {
+                        tab.classList.remove('active');
+                        if (tab.dataset.category === category) {
+                            tab.classList.add('active');
+                        }
+                    });
+                }
+                
+                // Clear and populate grid
+                container.innerHTML = '';
+                
+                const emojis = emojiCategories[category];
+                emojis.forEach(emoji => {
+                    const button = document.createElement('button');
+                    button.className = 'emoji-button';
+                    button.textContent = emoji;
+                    
+                    // Define hover state with a class
+                    let isHovered = false;
+                    
+                    button.onmouseover = function() {
+                        isHovered = true;
+                        this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                        this.style.transform = 'scale(1.2)';
+                    };
+                    
+                    button.onmouseout = function() {
+                        isHovered = false;
+                        this.style.backgroundColor = '';
+                        this.style.transform = '';
+                    };
+                    
+                    button.onclick = () => {
+                        insertEmoji(emoji);
+                        toggleEmojiPicker();
+                    };
+                    
+                    container.appendChild(button);
+                });
+            }
+            
+            // Toggle emoji picker visibility
+            function toggleEmojiPicker() {
+                isPickerVisible = !isPickerVisible;
+                
+                if (isPickerVisible) {
+                    // Initialize picker if not already done
+                    if (!emojiPickerContainer.children.length) {
+                        initializeEmojiPicker();
+                    }
+                    
+                    const pickerWidth = 400;
+                    const pickerHeight = 450;
+                    
+                    // Get message input container for vertical positioning
+                    const inputContainer = document.querySelector('.chat-input-container');
+                    const inputRect = inputContainer.getBoundingClientRect();
+                    
+                    // Position just above the input container but a bit lower than before
+                    let topPos = inputRect.top - pickerHeight + 30; // Added 30px to make it lower
+                    
+                    // Position more to the left (shift from right edge of button)
+                    const buttonRect = emojiBtn.getBoundingClientRect();
+                    let leftPos = buttonRect.right - pickerWidth - 50; // 50px more to the left
+                    
+                    // Make sure it stays on screen
+                    leftPos = Math.max(20, leftPos);
+                    
+                    // Apply styles
+                    emojiPickerContainer.style.position = 'fixed';
+                    emojiPickerContainer.style.top = `${topPos}px`;
+                    emojiPickerContainer.style.left = `${leftPos}px`;
+                    emojiPickerContainer.style.display = 'block';
+                    emojiPickerContainer.style.visibility = 'visible';
+                    emojiPickerContainer.style.opacity = '1';
+                    
+                } else {
+                    emojiPickerContainer.style.display = 'none';
+                    emojiPickerContainer.style.visibility = 'hidden';
+                    emojiPickerContainer.style.opacity = '0';
+                }
+            }
+            
+            // Insert emoji into message input
+            function insertEmoji(emoji) {
+                const start = messageInput.selectionStart;
+                const end = messageInput.selectionEnd;
+                const text = messageInput.value;
+                messageInput.value = text.substring(0, start) + emoji + text.substring(end);
+                messageInput.selectionStart = messageInput.selectionEnd = start + emoji.length;
+                messageInput.focus();
+            }
+            
+            // Toggle emoji picker on button click
+            emojiBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleEmojiPicker();
+            });
+            
+            // Close emoji picker when clicking outside
+            document.addEventListener('click', (e) => {
+                if (isPickerVisible && !emojiPickerContainer.contains(e.target) && e.target !== emojiBtn) {
+                    toggleEmojiPicker();
+                }
+            });
+            
+            console.log('Emoji picker initialized with all categories');
+        });
+    </script>
 </body>
 
 </html> 

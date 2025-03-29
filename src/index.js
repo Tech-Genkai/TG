@@ -871,18 +871,19 @@ io.on('connection', async (socket) => {
     
     // Handle private messages
     socket.on('private message', async (data) => {
-        const { recipient, text } = data;
+        const { recipient, text, media } = data;
         
-        if (!recipient || !text.trim()) {
+        // Allow empty text if media is present
+        if (!recipient || (!text && !media)) {
             console.log('Invalid private message data:', data);
             return socket.emit('error', { message: 'Invalid message data' });
         }
         
-        // Sanitize message text
-        const sanitizedText = sanitizeText(text);
+        // Sanitize message text (if present)
+        const sanitizedText = text ? sanitizeText(text) : '';
         
         try {
-            console.log(`Private message from ${socket.username} to ${recipient}: "${sanitizedText.substring(0, 30)}${sanitizedText.length > 30 ? '...' : ''}"`);
+            console.log(`Private message from ${socket.username} to ${recipient}: "${sanitizedText.substring(0, 30)}${sanitizedText.length > 30 ? '...' : ''}"${media ? ' [with media]' : ''}`);
             
             // Get recipient user
             const recipientUser = await collection.findOne({ username: recipient });
@@ -900,7 +901,8 @@ io.on('connection', async (socket) => {
                 recipientDisplayName: recipientUser.displayName || recipient,
                 recipientProfilePic: recipientUser.profilePic || '/images/default-profile.png',
                 text: sanitizedText,
-                timestamp: new Date()
+                timestamp: new Date(),
+                media: media || null
             };
             
             // Save to database
@@ -909,7 +911,8 @@ io.on('connection', async (socket) => {
                 recipient: messageData.recipient,
                 text: messageData.text,
                 timestamp: messageData.timestamp,
-                read: false
+                read: false,
+                media: messageData.media
             });
             
             await newDirectMessage.save();
@@ -924,7 +927,7 @@ io.on('connection', async (socket) => {
             if (conversation) {
                 // Update existing conversation
                 console.log(`Updating existing conversation: ${conversation._id}`);
-                conversation.lastMessage = sanitizedText;
+                conversation.lastMessage = media ? '[Media] ' + sanitizedText : sanitizedText;
                 conversation.lastMessageTime = messageData.timestamp;
                 conversation.updatedAt = messageData.timestamp;
                 await conversation.save();
@@ -933,7 +936,7 @@ io.on('connection', async (socket) => {
                 console.log(`Creating new conversation for users: ${participantsArray.join(', ')}`);
                 conversation = new Conversation({
                     participants: participantsArray,
-                    lastMessage: sanitizedText,
+                    lastMessage: media ? '[Media] ' + sanitizedText : sanitizedText,
                     lastMessageTime: messageData.timestamp,
                     updatedAt: messageData.timestamp
                 });
@@ -1137,7 +1140,8 @@ app.get('/api/messages/:username', async (req, res) => {
                 text: msg.text,
                 timestamp: msg.timestamp,
                 read: msg.read,
-                isSelf: isSelf
+                isSelf: isSelf,
+                media: msg.media || null
             };
         });
         
