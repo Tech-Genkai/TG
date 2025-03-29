@@ -90,58 +90,187 @@ function initializeAccountStorage() {
 
 // Set active page in sidebar
 function setActivePage() {
-    // Get current path
-    const currentPath = window.location.pathname;
-    
-    // Get all sidebar links
-    const sidebarLinks = document.querySelectorAll('.sidebar a');
-    
-    // Get all navbar icons
-    const navbarIcons = document.querySelectorAll('.nav-icons a');
-    
-    // Remove active class from all links and icons
-    sidebarLinks.forEach(link => link.classList.remove('active'));
-    navbarIcons.forEach(icon => icon.classList.remove('active'));
-    
-    // Function to check and mark active link
-    const checkAndMarkActive = (element, href) => {
-        // Special case for home page
-        if (href === '/' && (currentPath === '/' || currentPath === '/index.html')) {
-            element.classList.add('active');
+    try {
+        // Get current path
+        const currentPath = window.location.pathname;
+        
+        // Log the current path for debugging
+        console.log('Current path:', currentPath);
+        
+        // Find all navigation elements that could be highlighted
+        let sidebarLinks = [];
+        let navbarIcons = [];
+        
+        // Try to find sidebar links using various selectors
+        const sidebarSelectors = [
+            '.sidebar a',
+            'nav a',
+            '.nav a',
+            '#sidebar a',
+            'aside a',
+            '[class*="sidebar"] a',
+            '[class*="nav"] a'
+        ];
+        
+        // Try each selector until we find some links
+        for (const selector of sidebarSelectors) {
+            try {
+                const links = document.querySelectorAll(selector);
+                if (links && links.length > 0) {
+                    sidebarLinks = Array.from(links);
+                    console.log(`Found ${links.length} sidebar links using selector: ${selector}`);
+                    break;
+                }
+            } catch (err) {
+                console.warn(`Error with selector ${selector}:`, err);
+            }
         }
-        // Special case for profile-related pages
-        else if (href === '/profile' && (currentPath.startsWith('/profile') || currentPath.startsWith('/user-profile'))) {
-            element.classList.add('active');
+        
+        // Try to find navbar icons using various selectors
+        const navbarSelectors = [
+            '.nav-icons a',
+            'header a', 
+            'nav:first-of-type a',
+            '.navbar a',
+            '[class*="header"] a',
+            '[class*="topbar"] a'
+        ];
+        
+        // Try each selector until we find some icons
+        for (const selector of navbarSelectors) {
+            try {
+                const icons = document.querySelectorAll(selector);
+                if (icons && icons.length > 0) {
+                    navbarIcons = Array.from(icons);
+                    console.log(`Found ${icons.length} navbar icons using selector: ${selector}`);
+                    break;
+                }
+            } catch (err) {
+                console.warn(`Error with selector ${selector}:`, err);
+            }
         }
-        // Special case for messages
-        else if (href === '/messages' && currentPath.startsWith('/messages')) {
-            element.classList.add('active');
+        
+        // Direct handling for specific pages
+        if (currentPath === '/messages' || currentPath.startsWith('/messages/')) {
+            console.log('Messages page detected, setting active class directly');
+            
+            // Clear any existing active classes
+            document.querySelectorAll('a.active').forEach(a => {
+                a.classList.remove('active');
+            });
+            
+            // Find and highlight the messages link in sidebar
+            const messagesLink = document.querySelector('.sidebar a[href="/messages"]');
+            if (messagesLink) {
+                messagesLink.classList.add('active');
+                console.log('Added active class to messages link:', messagesLink);
+                return;
+            }
+            
+            // Fallback to finding by content
+            const messageLinks = Array.from(document.querySelectorAll('.sidebar a')).filter(a => {
+                const text = a.textContent?.trim();
+                const img = a.querySelector('img');
+                const alt = img ? img.getAttribute('alt') : '';
+                const containsMessages = text === 'Messages' || text?.includes('Messages') || 
+                                        alt === 'Messages' || alt?.includes('Messages');
+                return containsMessages;
+            });
+            
+            if (messageLinks.length > 0) {
+                messageLinks[0].classList.add('active');
+                console.log('Added active class to messages link by content:', messageLinks[0]);
+                return;
+            }
         }
-        // Special case for friends
-        else if (href === '/friends' && currentPath.startsWith('/friends')) {
-            element.classList.add('active');
+        
+        // Remove active class from all links before adding it to the matching one
+        sidebarLinks.forEach(link => {
+            if (link && link.classList) link.classList.remove('active');
+        });
+        navbarIcons.forEach(icon => {
+            if (icon && icon.classList) icon.classList.remove('active');
+        });
+        
+        // Function to check if a link matches the current path
+        const matchesPath = (link, path) => {
+            if (!link) return false;
+            
+            try {
+                const href = link.getAttribute('href');
+                if (!href) return false;
+                
+                // Log the href for debugging
+                console.log(`Checking link: ${href} against path: ${path}`);
+                
+                // Check for exact match
+                if (href === path) return true;
+                
+                // Check for home page special case
+                if ((href === '/' || href === '/index.html') && 
+                    (path === '/' || path === '/index.html')) {
+                    return true;
+                }
+                
+                // Check for path prefix match for non-home pages
+                if (href !== '/' && path.startsWith(href)) return true;
+                
+                // Special case for messages
+                if ((href === '/messages' || href.includes('messages')) && 
+                    (path.includes('messages') || path.includes('private-messages'))) {
+                    return true;
+                }
+                
+                // Special case for profile
+                if ((href === '/profile' || href.includes('profile')) && 
+                    (path.includes('profile') || path.includes('user-profile'))) {
+                    return true;
+                }
+                
+                return false;
+            } catch (err) {
+                console.warn('Error matching path for link:', err);
+                return false;
+            }
+        };
+        
+        // Try to match sidebar links
+        let foundSidebarMatch = false;
+        for (const link of sidebarLinks) {
+            if (matchesPath(link, currentPath)) {
+                try {
+                    if (link.classList) {
+                        link.classList.add('active');
+                        console.log('Added active class to sidebar link:', link);
+                        foundSidebarMatch = true;
+                        break;
+                    }
+                } catch (err) {
+                    console.warn('Error adding active class to sidebar link:', err);
+                }
+            }
         }
-        // Special case for accounts section (detecting by link text)
-        else if (element.textContent.includes('Accounts') && currentPath.includes('account')) {
-            element.classList.add('active');
+        
+        // Try to match navbar icons
+        let foundNavbarMatch = false;
+        for (const icon of navbarIcons) {
+            if (matchesPath(icon, currentPath)) {
+                try {
+                    if (icon.classList) {
+                        icon.classList.add('active');
+                        console.log('Added active class to navbar icon:', icon);
+                        foundNavbarMatch = true;
+                        break;
+                    }
+                } catch (err) {
+                    console.warn('Error adding active class to navbar icon:', err);
+                }
+            }
         }
-        // Exact match for other pages
-        else if (href === currentPath) {
-            element.classList.add('active');
-        }
-    };
-    
-    // Add active class to current page link in sidebar
-    sidebarLinks.forEach(link => {
-        const href = link.getAttribute('href');
-        checkAndMarkActive(link, href);
-    });
-    
-    // Add active class to current page icon in navbar
-    navbarIcons.forEach(icon => {
-        const href = icon.getAttribute('href');
-        checkAndMarkActive(icon, href);
-    });
+        
+    } catch (error) {
+        console.error('Error in setActivePage:', error);
+    }
 }
 
 // Initialize search functionality

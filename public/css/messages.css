@@ -340,6 +340,9 @@
 
 .message-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .message-header {
@@ -367,11 +370,49 @@
     margin-left: 8px;
 }
 
+/* Enhanced styling for short messages */
+.message.short-message {
+    max-width: fit-content !important;
+    min-width: 40px;
+    padding: 6px 12px !important;
+    word-break: keep-all;
+    white-space: nowrap;
+    border-radius: 5px !important;
+}
+
+.message-own.short-message {
+    float: right;
+    margin-left: auto;
+    border-radius: 5px !important;
+}
+
+.message-other.short-message {
+    float: left;
+    margin-right: auto;
+    border-radius: 5px !important;
+}
+
+/* Special styling for short consecutive messages */
+.message.short-message.consecutive-message {
+    margin-top: 2px !important;
+    clear: both;
+    border-radius: 5px !important;
+}
+
+.message-own.short-message.consecutive-message {
+    border-radius: 5px !important;
+}
+
+.message-other.short-message.consecutive-message {
+    border-radius: 5px !important;
+}
+
+/* Regular message styling */
 .message {
     padding: 10px 12px;
     border-radius: 5px;
     display: inline-block;
-    max-width: 100%;
+    max-width: 70% !important;
     box-sizing: border-box;
     word-wrap: break-word;
     margin-bottom: 2px;
@@ -380,10 +421,11 @@
 
 /* Hide message bubble for media messages */
 .message:has(.message-media) {
-    background: none;
-    border: none;
-    padding: 0;
-    box-shadow: none;
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
 .message-other {
@@ -403,7 +445,15 @@
 
 .consecutive-message {
     margin-top: 2px;
-    border-radius: 5px;
+    border-radius: 5px !important;
+}
+
+.message-own.consecutive-message {
+    border-radius: 5px !important;
+}
+
+.message-other.consecutive-message {
+    border-radius: 5px !important;
 }
 
 /* Chat input styling */
@@ -472,7 +522,10 @@
     margin: 5px 0;
     border-radius: 8px;
     overflow: hidden;
-    background: rgba(0, 0, 0, 0.1);
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 .message-media img,
@@ -482,6 +535,8 @@
     object-fit: contain;
     display: block;
     transition: transform 0.2s ease;
+    border: none !important;
+    outline: none !important;
 }
 
 .message-media img:hover,
@@ -729,4 +784,58 @@
     to {
         transform: scale(1);
     }
+}
+
+/* Styles for load more messages button */
+.load-more-messages {
+    padding: 15px;
+    text-align: center;
+    width: 100%;
+}
+
+.load-more-messages button {
+    background-color: rgba(35, 35, 45, 0.7);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.load-more-messages button:hover {
+    background-color: rgba(45, 45, 55, 0.9);
+}
+
+/* Loading older messages indicator */
+.loading-older-messages {
+    padding: 10px;
+    text-align: center;
+    width: 100%;
+}
+
+.loading-older-messages .loading-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.loading-older-messages .loading-spinner i {
+    animation: spin 1s linear infinite;
+}
+
+.no-more-messages {
+    padding: 10px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* Profile pic placeholder for consecutive messages in older batch */
+.message-profile-pic.placeholder {
+    visibility: hidden;
 } 

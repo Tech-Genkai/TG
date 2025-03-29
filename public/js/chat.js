@@ -11,15 +11,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const messagesContainer = document.getElementById('messages');
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-message');
-    const attachmentButton = document.getElementById('attachment-btn');
-    const emojiButton = document.getElementById('emoji-btn');
-    const fileInput = document.getElementById('file-input');
+    
+    // For compatibility with both pages
+    const attachmentButton = document.getElementById('attachment-btn') || document.getElementById('media-upload');
+    const emojiButton = document.getElementById('emoji-btn') || document.getElementById('emoji-button');
+    const fileInput = document.getElementById('file-input') || document.getElementById('media-input');
     const emojiPicker = document.getElementById('emoji-picker');
     
     // Emoji categories and data
     const emojiCategories = {
         'smileys': ['😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🫣', '🤗', '🫡', '🤔', '🫢', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🫨', '🫠', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🫥', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠'],
-        'people': ['👶', '👧', '🧒', '👦', '👩', '🧑', '👨', '👩‍🦱', '👨‍🦱', '👩‍🦰', '👨‍🦰', '👱‍♀️', '👱‍♂️', '👩‍🦳', '👨‍🦳', '👩‍🦲', '👨‍🦲', '🧔', '👵', '🧓', '👴', '👲', '👳‍♀️', '👳‍♂️', '🧕', '👮‍♀️', '👮‍♂️', '👷‍♀️', '👷‍♂️', '💂‍♀️', '💂‍♂️', '🕵️‍♀️', '🕵️‍♂️', '👨‍⚕️', '👩‍⚕️', '👨‍🌾', '👩‍🌾', '👨‍🍳', '👩‍🍳', '👨‍🎓', '👩‍🎓', '👨‍🎤', '👩‍🎤', '👨‍🏫', '👩‍🏫', '👨‍🏭', '👩‍🏭', '👨‍💻', '👩‍💻', '👨‍💼', '👩‍💼', '👨‍🔧', '👩‍🔧', '👨‍🔬', '👩‍🔬', '👨‍🎨', '👩‍🎨', '👨‍🚀', '👩‍🚀', '👨‍⚖️', '👩‍⚖️', '👰‍♀️', '👰‍♂️', '🤵‍♀️', '🤵‍♂️', '🫃', '🫄', '🤰', '🤱', '👼', '🎅', '🤶', '🦸‍♀️', '🦸‍♂️', '🦹‍♀️', '🦹‍♂️', '🧙‍♀️', '🧙‍♂️', '🧚‍♀️', '🧚‍♂️', '🧚‍♀️', '🧛‍♂️', '🧜‍♀️', '🧜‍♂️', '🧝‍♀️', '🧝‍♂️', '🧞‍♀️', '🧞‍♂️', '🧟‍♀️', '🧟‍♂️', '🧌', '💆‍♀️', '💆‍♂️', '💇‍♀️', '💇‍♂️', '🚶‍♀️', '🚶‍♂️', '🧍‍♀️', '🧍‍♂️', '🧎‍♀️', '🧎‍♂️', '🏃‍♀️', '🏃‍♂️', '💃', '🕺', '👯‍♀️', '👯‍♂️', '🧖‍♀️', '🧖‍♂️', '🧗‍♀️', '🧗‍♂️', '🤺', '🏇', '⛷️', '🏂', '🏌️‍♀️', '🏌️‍♂️', '🏄‍♀️', '🏄‍♂️', '🚣‍♀️', '🚣‍♂️', '🏊‍♀️', '🏊‍♂️', '⛹️‍♀️', '⛹️‍♂️', '🏋️‍♀️', '🏋️‍♂️', '🚴‍♀️', '🚴‍♂️', '🚵‍♀️', '🚵‍♂️', '🤸‍♀️', '🤸‍♂️', '🤼‍♀️', '🤼‍♂️', '🤽‍♀️', '🤽‍♂️', '🤾‍♀️', '🤾‍♂️', '🤹‍♀️', '🤹‍♂️', '🧘‍♀️', '🧘‍♂️', '🛀', '🛌'],
+        'people': ['👶', '👧', '🧒', '👦', '👩', '🧑', '👨', '👩‍🦱', '👨‍🦱', '👩‍🦰', '👨‍🦰', '👱‍♀️', '👱‍♂️', '👩‍🦳', '👨‍🦳', '👩‍🦲', '👨‍🦲', '🧔', '👵', '🧓', '👴', '👲', '👳‍♀️', '👳‍♂️', '🧕', '👮‍♀️', '👮‍♂️', '👷‍♀️', '👷‍♂️', '💂‍♀️', '💂‍♂️', '🕵️‍♀️', '🕵️‍♂️', '👨‍⚕️', '👩‍⚕️', '👨‍🌾', '👩‍🌾', '👨‍🍳', '👩‍🍳', '👨‍🎓', '👩‍🎓', '👨‍🎤', '👩‍🎤', '👨‍🏫', '👩‍🏫', '👨‍🏭', '👩‍🏭', '👨‍💻', '👩‍💻', '👨‍💼', '👩‍💼', '👨‍🔧', '👩‍🔧', '👨‍🔬', '👩‍🔬', '👨‍🎨', '👩‍🎨', '👨‍🚀', '👩‍🚀', '👨‍⚖️', '👨‍⚖️', '👰‍♀️', '👰‍♂️', '🤵‍♀️', '🤵‍♂️', '🫃', '🫄', '🤰', '🤱', '👼', '🎅', '🤶', '🦸‍♀️', '🦸‍♂️', '🦹‍♀️', '🦹‍♂️', '🧙‍♀️', '🧙‍♂️', '🧚‍♀️', '🧚‍♂️', '🧚‍♀️', '🧛‍♂️', '🧜‍♀️', '🧜‍♂️', '🧝‍♀️', '🧝‍♂️', '🧞‍♀️', '🧞‍♂️', '🧟‍♀️', '🧟‍♂️', '🧌', '💆‍♀️', '💆‍♂️', '💇‍♀️', '💇‍♂️', '🚶‍♀️', '🚶‍♂️', '🧍‍♀️', '🧍‍♂️', '🧎‍♀️', '🧎‍♂️', '🏃‍♀️', '🏃‍♂️', '💃', '🕺', '👯‍♀️', '👯‍♂️', '🧖‍♀️', '🧖‍♂️', '🧗‍♀️', '🧗‍♂️', '🤺', '🏇', '⛷️', '🏂', '🏌️‍♀️', '🏌️‍♂️', '🏄‍♀️', '🏄‍♂️', '🚣‍♀️', '🚣‍♂️', '🏊‍♀️', '🏊‍♂️', '⛹️‍♀️', '⛹️‍♂️', '🏋️‍♀️', '🏋️‍♂️', '🚴‍♀️', '🚴‍♂️', '🚵‍♀️', '🚵‍♂️', '🤸‍♀️', '🤸‍♂️', '🤼‍♀️', '🤼‍♂️', '🤽‍♀️', '🤽‍♂️', '🤾‍♀️', '🤾‍♂️', '🤹‍♀️', '🤹‍♂️', '🧘‍♀️', '🧘‍♂️', '🛀', '🛌'],
         'gestures': ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🫰', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄', '🫦', '💋', '🩺'],
         'love': ['💘', '💝', '💖', '💗', '💓', '💞', '💕', '💟', '❣️', '💔', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎', '🖤', '🤍', '💯', '💢', '💥', '💫', '💦', '💨', '🕳️', '💣', '💬', '👁️‍🗨️', '🗨️', '🗯️', '💭', '💤'],
         'animals': ['🐵', '🐒', '🦍', '🦧', '🐶', '🐕', '🦮', '🐕‍🦺', '🐩', '🐺', '🦊', '🦝', '🐱', '🐈', '🐈‍⬛', '🦁', '🐯', '🐅', '🐆', '🐴', '🐎', '🦄', '🦓', '🦌', '🦬', '🐮', '🐂', '🐃', '🐄', '🐷', '🐖', '🐗', '🐽', '🐏', '🐑', '🐐', '🐪', '🐫', '🦙', '🦒', '🐘', '🦣', '🦏', '🦛', '🐭', '🐁', '🐀', '🐹', '🐰', '🐇', '🐿️', '🦫', '🦔', '🦇', '🐻', '🐻‍❄️', '🐨', '🐼', '🦥', '🦦', '🦨', '🦘', '🦡', '🐾', '🦃', '🐔', '🐓', '🐣', '🐤', '🐥', '🐦', '🐧', '🕊️', '🦅', '🦆', '🦢', '🦉', '🦤', '🪶', '🦩', '🦚', '🦜', '🐸', '🐊', '🐢', '🦎', '🐍', '🐲', '🐉', '🦕', '🦖', '🐳', '🐋', '🐬', '🦭', '🐟', '🐠', '🐡', '🦈', '🐙', '🐚', '🪸', '🐌', '🦋', '🐛', '🐜', '🐝', '🪲', '🐞', '🦗', '🪳', '🕷️', '🕸️', '🦂', '🦟', '🪰', '🪱', '🦠'],
@@ -155,8 +157,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentSender = msg.username;
         const currentTime = msg.timestamp;
         const isOwnMessage = currentSender === username;
-        const messageText = msg.text;
-        const isShortMessage = messageText.length <= 5 && !messageText.includes('\n');
+        const messageText = msg.text || '';
+        
+        // Better short message detection - catch more phrases
+        const isShortMessage = messageText.length <= 30 && !messageText.includes('\n');
         
         // Check if this message should be grouped with the previous one
         if (shouldGroupMessages(currentSender, currentTime)) {
@@ -390,42 +394,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Toggle emoji picker visibility
     function toggleEmojiPicker() {
-        isPickerVisible = !isPickerVisible;
-        
-        if (isPickerVisible) {
-            // Initialize picker if not already done
-            if (!emojiPicker.children.length) {
-                initializeEmojiPicker();
-            }
-            
-            // Calculate position to avoid screen overflow
-            const buttonRect = emojiButton.getBoundingClientRect();
-            const pickerWidth = 350;
-            const pickerHeight = 400;
-            
-            // Calculate left position to avoid overflow
-            let leftPos = Math.max(10, buttonRect.left - (pickerWidth / 2));
-            leftPos = Math.min(leftPos, window.innerWidth - pickerWidth - 10);
-            
-            // Calculate top position to show above the input
-            let topPos = buttonRect.top - pickerHeight - 10;
-            if (topPos < 10) {
-                // If not enough space above, show below
-                topPos = buttonRect.bottom + 10;
-            }
-            
-            // Apply styles
-            emojiPicker.style.position = 'fixed';
-            emojiPicker.style.top = `${topPos}px`;
-            emojiPicker.style.left = `${leftPos}px`;
-            emojiPicker.style.display = 'block';
-            emojiPicker.style.visibility = 'visible';
-            emojiPicker.style.opacity = '1';
-            
-        } else {
+        if (emojiPicker.style.display === 'block') {
             emojiPicker.style.display = 'none';
-            emojiPicker.style.visibility = 'hidden';
-            emojiPicker.style.opacity = '0';
+        } else {
+            initializeEmojiPicker();
+            
+            // Position the emoji picker
+            const inputRect = messageInput.getBoundingClientRect();
+            emojiPicker.style.bottom = (window.innerHeight - inputRect.top + 10) + 'px';
+            emojiPicker.style.left = (inputRect.left + inputRect.width / 2 - 200) + 'px';
+            
+            emojiPicker.style.display = 'block';
         }
     }
 
@@ -439,54 +418,122 @@ document.addEventListener('DOMContentLoaded', function() {
         messageInput.focus();
     }
 
-    // Toggle emoji picker on button click
-    emojiButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleEmojiPicker();
-    });
-
-    // Close emoji picker when clicking outside
-    document.addEventListener('click', (e) => {
-        if (isPickerVisible && !emojiPicker.contains(e.target) && !emojiButton.contains(e.target)) {
-            toggleEmojiPicker();
-        }
-    });
-
     // Handle file attachment
-    attachmentButton.addEventListener('click', () => {
-        fileInput.click();
-    });
-
-    // Create upload progress element
-    function createUploadProgress() {
-        const progress = document.createElement('div');
-        progress.className = 'upload-progress';
-        progress.innerHTML = `
-            <div class="upload-progress-header">
-                <h3 class="upload-progress-title">Uploading Media</h3>
-                <button class="upload-progress-close">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-            <div class="upload-progress-bar">
-                <div class="upload-progress-fill"></div>
-            </div>
-            <div class="upload-preview"></div>
-            <p class="upload-info">0%</p>
-        `;
-        
-        // Add close button functionality
-        const closeBtn = progress.querySelector('.upload-progress-close');
-        closeBtn.onclick = () => {
-            progress.remove();
-        };
-        
-        document.body.appendChild(progress);
-        return progress;
+    if (attachmentButton) {
+        attachmentButton.addEventListener('click', () => {
+            fileInput.click();
+        });
     }
 
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
+    // Handle file input
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            handleFileUpload(this.files[0]);
+        });
+    }
+
+    // Function to create media element
+    function createMediaElement(media) {
+        // Check if media object is valid and has a URL
+        if (!media || typeof media !== 'object' || !media.url) {
+            // Remove console warning that's causing log spam
+            // Return an empty div instead of logging an error
+            return document.createElement('div');
+        }
+        
+        const container = document.createElement('div');
+        container.className = 'media-container';
+        container.style.border = 'none';
+        container.style.outline = 'none';
+        container.style.boxShadow = 'none';
+        container.style.background = 'transparent';
+        
+        let mediaElement;
+        
+        // Check if media.type exists before using startsWith
+        if (media.type && typeof media.type === 'string') {
+            if (media.type.startsWith('image/')) {
+                mediaElement = document.createElement('img');
+                mediaElement.src = media.url;
+                mediaElement.alt = 'Image';
+                mediaElement.style.maxWidth = '100%';
+                mediaElement.style.maxHeight = '400px';
+                mediaElement.style.objectFit = 'contain';
+                mediaElement.style.border = 'none';
+                mediaElement.style.outline = 'none';
+                mediaElement.style.boxShadow = 'none';
+            } else if (media.type.startsWith('video/')) {
+                mediaElement = document.createElement('video');
+                mediaElement.src = media.url;
+                mediaElement.controls = true;
+                mediaElement.style.maxWidth = '100%';
+                mediaElement.style.maxHeight = '400px';
+                mediaElement.style.objectFit = 'contain';
+                mediaElement.style.border = 'none';
+                mediaElement.style.outline = 'none';
+                mediaElement.style.boxShadow = 'none';
+            }
+        } else {
+            // If media.type is missing, try to guess from URL
+            const url = media.url.toLowerCase();
+            if (url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || 
+                url.endsWith('.gif') || url.endsWith('.webp')) {
+                mediaElement = document.createElement('img');
+                mediaElement.src = media.url;
+                mediaElement.alt = 'Image';
+                mediaElement.style.maxWidth = '100%';
+                mediaElement.style.maxHeight = '400px';
+                mediaElement.style.objectFit = 'contain';
+                mediaElement.style.border = 'none';
+                mediaElement.style.outline = 'none';
+                mediaElement.style.boxShadow = 'none';
+            } else if (url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.ogg')) {
+                mediaElement = document.createElement('video');
+                mediaElement.src = media.url;
+                mediaElement.controls = true;
+                mediaElement.style.maxWidth = '100%';
+                mediaElement.style.maxHeight = '400px';
+                mediaElement.style.objectFit = 'contain';
+                mediaElement.style.border = 'none';
+                mediaElement.style.outline = 'none';
+                mediaElement.style.boxShadow = 'none';
+            } else {
+                // Create a link if we can't determine the type
+                mediaElement = document.createElement('a');
+                mediaElement.href = media.url;
+                mediaElement.target = '_blank';
+                mediaElement.textContent = media.name || 'View Media';
+                mediaElement.className = 'media-link';
+            }
+        }
+        
+        if (mediaElement) {
+            container.appendChild(mediaElement);
+            
+            // Add media actions
+            const actions = document.createElement('div');
+            actions.className = 'media-actions';
+            
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.innerHTML = '<i class="bi bi-download"></i>';
+            downloadBtn.onclick = () => window.open(media.url, '_blank');
+            
+            const expandBtn = document.createElement('button');
+            expandBtn.className = 'expand-btn';
+            expandBtn.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
+            expandBtn.onclick = () => window.open(media.url, '_blank');
+            
+            actions.appendChild(downloadBtn);
+            actions.appendChild(expandBtn);
+            container.appendChild(actions);
+        }
+        
+        return container;
+    }
+
+    // Function to handle file uploads
+    function handleFileUpload(file) {
         if (!file) return;
 
         // Check file size (5MB limit)
@@ -574,50 +621,34 @@ document.addEventListener('DOMContentLoaded', function() {
             notifications.error('Upload Failed', 'Failed to upload media');
             progress.remove();
         }
-    });
+    }
 
-    // Function to create media element
-    function createMediaElement(media) {
-        const container = document.createElement('div');
-        container.className = 'media-container';
+    // Create upload progress element
+    function createUploadProgress() {
+        const progress = document.createElement('div');
+        progress.className = 'upload-progress';
+        progress.innerHTML = `
+            <div class="upload-progress-header">
+                <h3 class="upload-progress-title">Uploading Media</h3>
+                <button class="upload-progress-close">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="upload-progress-bar">
+                <div class="upload-progress-fill"></div>
+            </div>
+            <div class="upload-preview"></div>
+            <p class="upload-info">0%</p>
+        `;
         
-        let mediaElement;
-        if (media.type.startsWith('image/')) {
-            mediaElement = document.createElement('img');
-            mediaElement.src = media.url;
-            mediaElement.alt = 'Image';
-            mediaElement.style.maxWidth = '100%';
-            mediaElement.style.maxHeight = '400px';
-            mediaElement.style.objectFit = 'contain';
-        } else if (media.type.startsWith('video/')) {
-            mediaElement = document.createElement('video');
-            mediaElement.src = media.url;
-            mediaElement.controls = true;
-            mediaElement.style.maxWidth = '100%';
-            mediaElement.style.maxHeight = '400px';
-            mediaElement.style.objectFit = 'contain';
-        }
+        // Add close button functionality
+        const closeBtn = progress.querySelector('.upload-progress-close');
+        closeBtn.onclick = () => {
+            progress.remove();
+        };
         
-        const actions = document.createElement('div');
-        actions.className = 'media-actions';
-        
-        const downloadBtn = document.createElement('button');
-        downloadBtn.className = 'download-btn';
-        downloadBtn.innerHTML = '<i class="fas fa-download"></i>';
-        downloadBtn.onclick = () => window.open(media.url, '_blank');
-        
-        const expandBtn = document.createElement('button');
-        expandBtn.className = 'expand-btn';
-        expandBtn.innerHTML = '<i class="fas fa-expand"></i>';
-        expandBtn.onclick = () => window.open(media.url, '_blank');
-        
-        actions.appendChild(downloadBtn);
-        actions.appendChild(expandBtn);
-        
-        container.appendChild(mediaElement);
-        container.appendChild(actions);
-        
-        return container;
+        document.body.appendChild(progress);
+        return progress;
     }
 
     // Initialize emoji picker

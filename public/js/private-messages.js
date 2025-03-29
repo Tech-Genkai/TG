@@ -8,6 +8,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     console.log('Messages page loaded for user:', username);
+    
+    // Function to highlight the messages link in sidebar
+    function highlightMessagesInSidebar() {
+        // Remove active class from all sidebar links
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.classList.remove('active');
+        });
+        
+        // Find and highlight the messages link
+        const messagesLinks = document.querySelectorAll('.sidebar a[href="/messages"]');
+        if (messagesLinks.length > 0) {
+            messagesLinks.forEach(link => {
+                link.classList.add('active');
+            });
+            console.log('Messages link highlighted in sidebar');
+        } else {
+            // Fallback to finding by content or image alt
+            const allSidebarLinks = document.querySelectorAll('.sidebar a');
+            allSidebarLinks.forEach(link => {
+                const text = link.textContent?.trim();
+                const img = link.querySelector('img');
+                const alt = img ? img.getAttribute('alt') : '';
+                
+                if (text === 'Messages' || alt === 'Messages') {
+                    link.classList.add('active');
+                    console.log('Messages link found by text/alt and highlighted');
+                }
+            });
+        }
+    }
+    
+    // Highlight the messages link in sidebar immediately
+    highlightMessagesInSidebar();
 
     // DOM elements
     const conversationsContainer = document.getElementById('conversations');
@@ -545,31 +578,63 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to create media element
     function createMediaElement(media) {
-        if (!media || !media.url) {
-            console.error('Invalid media data:', media);
-            return null;
+        // Check if media object is valid and has a URL
+        if (!media || typeof media !== 'object' || !media.url) {
+            // Remove console warning that's causing log spam
+            // Return an empty div instead of logging an error
+            return document.createElement('div');
         }
 
         const mediaContainer = document.createElement('div');
         mediaContainer.className = 'message-media';
         
         let mediaElement;
-        // Check if type is a MIME type or simple type
-        const isImage = media.type === 'image' || media.type.startsWith('image/');
-        const isVideo = media.type === 'video' || media.type.startsWith('video/');
         
-        if (isImage) {
-            mediaElement = document.createElement('img');
-            mediaElement.src = media.url;
-            mediaElement.alt = 'Shared image';
-        } else if (isVideo) {
-            mediaElement = document.createElement('video');
-            mediaElement.src = media.url;
-            mediaElement.controls = true;
-            mediaElement.playsInline = true;
+        // Check if media.type exists and is a string
+        if (media.type && typeof media.type === 'string') {
+            const isImage = media.type === 'image' || media.type.startsWith('image/');
+            const isVideo = media.type === 'video' || media.type.startsWith('video/');
+            
+            if (isImage) {
+                mediaElement = document.createElement('img');
+                mediaElement.src = media.url;
+                mediaElement.alt = 'Shared image';
+            } else if (isVideo) {
+                mediaElement = document.createElement('video');
+                mediaElement.src = media.url;
+                mediaElement.controls = true;
+                mediaElement.playsInline = true;
+            } else {
+                // For unknown types, create a link
+                mediaElement = document.createElement('a');
+                mediaElement.href = media.url;
+                mediaElement.target = '_blank';
+                mediaElement.textContent = media.name || 'View Media';
+                mediaElement.className = 'media-link';
+                return mediaContainer;
+            }
         } else {
-            console.error('Unsupported media type:', media.type);
-            return null;
+            // If media.type is missing, try to guess from URL
+            const url = media.url.toLowerCase();
+            if (url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || 
+                url.endsWith('.gif') || url.endsWith('.webp')) {
+                mediaElement = document.createElement('img');
+                mediaElement.src = media.url;
+                mediaElement.alt = 'Shared image';
+            } else if (url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.ogg')) {
+                mediaElement = document.createElement('video');
+                mediaElement.src = media.url;
+                mediaElement.controls = true;
+                mediaElement.playsInline = true;
+            } else {
+                // For unknown extensions, create a link
+                mediaElement = document.createElement('a');
+                mediaElement.href = media.url;
+                mediaElement.target = '_blank';
+                mediaElement.textContent = media.name || 'View Media';
+                mediaElement.className = 'media-link';
+                return mediaContainer;
+            }
         }
 
         // Create media overlay
@@ -581,31 +646,36 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Create a new media element for the overlay instead of cloning
         let overlayMediaElement;
-        if (isImage) {
+        if (mediaElement.tagName === 'IMG') {
             overlayMediaElement = document.createElement('img');
             overlayMediaElement.src = media.url;
             overlayMediaElement.alt = 'Full size image';
-        } else if (isVideo) {
+        } else if (mediaElement.tagName === 'VIDEO') {
             overlayMediaElement = document.createElement('video');
             overlayMediaElement.src = media.url;
             overlayMediaElement.controls = true;
             overlayMediaElement.playsInline = true;
         }
         
-        overlayContent.appendChild(overlayMediaElement);
-        overlay.appendChild(overlayContent);
-
-        // Add click handler to close overlay when clicking outside media content
-        overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.remove();
-            }
-        });
-
-        // Add click handler to open overlay
-        mediaElement.onclick = () => {
-            document.body.appendChild(overlay);
-        };
+        if (overlayMediaElement) {
+            overlayContent.appendChild(overlayMediaElement);
+            overlay.appendChild(overlayContent);
+            
+            // Add click handler to close overlay when clicking outside media content
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    document.body.removeChild(overlay);
+                }
+            });
+            
+            // Add click handler to show overlay when clicking on media
+            mediaElement.addEventListener('click', () => {
+                document.body.appendChild(overlay);
+                if (overlayMediaElement.tagName === 'VIDEO') {
+                    overlayMediaElement.play();
+                }
+            });
+        }
         
         mediaContainer.appendChild(mediaElement);
         return mediaContainer;
@@ -697,9 +767,6 @@ document.addEventListener('DOMContentLoaded', function() {
         navbarMessageIcon.href = '/messages';
     }
     
-    // Update sidebar message link
-    const sidebarMessageLink = document.querySelector('.sidebar a:nth-child(2)');
-    if (sidebarMessageLink) {
-        sidebarMessageLink.href = '/messages';
-    }
+    // Set correct title based on page
+    document.title = 'Messages | Tech Genkai';
 }); 
