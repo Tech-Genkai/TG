@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
             Object.keys(emojiCategories).forEach(category => {
                 const tab = document.createElement('button');
                 tab.className = 'emoji-tab';
-                tab.innerHTML = `${categoryIcons[category]}`;
+                tab.innerHTML = `${categoryIcons[category]} <span>${category.charAt(0).toUpperCase() + category.slice(1)}</span>`;
                 tab.onclick = () => showEmojiCategory(category, gridContainer);
                 tabsContainer.appendChild(tab);
             });
@@ -386,6 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
             button.textContent = emoji;
             button.onclick = () => {
                 insertEmoji(emoji);
+                toggleEmojiPicker();
             };
             container.appendChild(button);
         });
@@ -396,33 +397,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (emojiPicker.style.display === 'block') {
             emojiPicker.style.display = 'none';
         } else {
-            initializeEmojiPicker();
+                initializeEmojiPicker();
             
-            const pickerWidth = 400;
-            const pickerHeight = 450;
+            // Position the emoji picker
+            const inputRect = messageInput.getBoundingClientRect();
+            emojiPicker.style.bottom = (window.innerHeight - inputRect.top + 10) + 'px';
+            emojiPicker.style.left = (inputRect.left + inputRect.width / 2 - 200) + 'px';
             
-            // Get the position of the emoji button instead of the input container
-            const emojiButtonRect = emojiButton.getBoundingClientRect();
-            
-            // Position right above the emoji button
-            let topPos = emojiButtonRect.top - pickerHeight - 5;
-            
-            // Center horizontally relative to the emoji button
-            let leftPos = emojiButtonRect.left - (pickerWidth / 2) + (emojiButtonRect.width / 2);
-            
-            // Make sure it stays on screen
-            topPos = Math.max(20, topPos);
-            leftPos = Math.max(20, leftPos);
-            leftPos = Math.min(window.innerWidth - pickerWidth - 20, leftPos);
-            
-            // Apply styles
-            emojiPicker.style.position = 'fixed';
-            emojiPicker.style.top = `${topPos}px`;
-            emojiPicker.style.left = `${leftPos}px`;
             emojiPicker.style.display = 'block';
-            emojiPicker.style.visibility = 'visible';
-            emojiPicker.style.opacity = '1';
-            emojiPicker.style.zIndex = '99999';
         }
     }
 
