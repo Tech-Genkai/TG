@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const picker = document.createElement('em-emoji-picker');
         picker.classList.add('emoji-picker-element');
         picker.setAttribute('theme', 'dark');
+        picker.setAttribute('no-categories', 'true'); // Hide category labels in picker
         emojiPickerContainer.appendChild(picker);
 
         // Handle emoji selection
@@ -26,7 +27,6 @@ document.addEventListener('DOMContentLoaded', function() {
             messageInput.focus();
             messageInput.selectionStart = cursorPos + emoji.length;
             messageInput.selectionEnd = cursorPos + emoji.length;
-            emojiPickerContainer.style.display = 'none';
         });
 
         // Toggle emoji picker

@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const tab = document.createElement('button');
                     tab.className = 'emoji-tab';
                     tab.dataset.category = category;
-                    tab.innerHTML = `${categoryIcons[category]} <span>${category.charAt(0).toUpperCase() + category.slice(1)}</span>`;
+                    tab.innerHTML = `${categoryIcons[category]}`;
                     tab.onclick = () => showEmojiCategory(category, gridContainer, tabsContainer);
                     tabsContainer.appendChild(tab);
                 });
@@ -164,6 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 emojiPickerContainer.style.display = 'block';
                 emojiPickerContainer.style.visibility = 'visible';
                 emojiPickerContainer.style.opacity = '1';
+                emojiPickerContainer.style.zIndex = '99999';
                 
             } else {
                 emojiPickerContainer.style.display = 'none';
@@ -180,6 +181,9 @@ document.addEventListener('DOMContentLoaded', function() {
             messageInput.value = text.substring(0, start) + emoji + text.substring(end);
             messageInput.selectionStart = messageInput.selectionEnd = start + emoji.length;
             messageInput.focus();
+            
+            // Removed closing the emoji picker so it stays open
+            // The picker will only close when clicking outside or the emoji button
         }
         
         // Toggle emoji picker on button click

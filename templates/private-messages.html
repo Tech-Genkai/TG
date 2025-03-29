@@ -105,11 +105,11 @@
             flex-direction: column;
             height: 100%;
             min-height: 420px;
-            background: rgba(20, 20, 28, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(242, 24, 217, 0.3);
+            background: rgba(20, 20, 28, 0.98);
+            backdrop-filter: blur(15px);
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.9);
+            border: none;
             overflow: hidden;
         }
         
@@ -117,8 +117,8 @@
             display: flex;
             overflow-x: auto;
             padding: 8px;
-            background: transparent;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(30, 30, 40, 0.9);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
             scrollbar-width: thin;
             scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
         }
@@ -126,25 +126,27 @@
         .emoji-tab {
             display: flex;
             align-items: center;
-            gap: 5px;
+            justify-content: center;
             background: transparent;
             border: none;
             color: #fff;
-            padding: 6px 10px;
+            padding: 8px;
             margin-right: 5px;
             border-radius: 4px;
             cursor: pointer;
             white-space: nowrap;
             transition: all 0.2s ease;
-            font-size: 14px;
+            font-size: 20px;
         }
         
         .emoji-tab:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.1);
         }
         
         .emoji-tab.active {
-            background: rgba(242, 24, 217, 0.2);
+            background: rgba(100, 100, 100, 0.3);
+            transform: scale(1.1);
         }
         
         .emoji-grid-container {
@@ -173,16 +175,23 @@
         }
         
         .emoji-button:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.15);
             transform: scale(1.2);
         }
         
         .emoji-picker {
             position: fixed;
-            z-index: 9999;
+            z-index: 99999; /* Ultra high z-index to ensure it's on top */
             width: 400px;
             height: 450px;
             display: none;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85);
+            animation: emojiPopIn 0.3s ease-out;
+        }
+        
+        @keyframes emojiPopIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
     </style>
     <script>
@@ -242,7 +251,7 @@
                         const tab = document.createElement('button');
                         tab.className = 'emoji-tab';
                         tab.dataset.category = category;
-                        tab.innerHTML = `${categoryIcons[category]} <span>${category.charAt(0).toUpperCase() + category.slice(1)}</span>`;
+                        tab.innerHTML = `${categoryIcons[category]}`;
                         tab.onclick = () => showEmojiCategory(category, gridContainer, tabsContainer);
                         tabsContainer.appendChild(tab);
                     });
@@ -253,6 +262,12 @@
                     // Clear any existing content
                     emojiPickerContainer.innerHTML = '';
                     emojiPickerContainer.appendChild(container);
+                    
+                    // Apply some additional styling to ensure it looks good
+                    emojiPickerContainer.style.background = 'rgba(20, 20, 28, 0.95)';
+                    emojiPickerContainer.style.borderRadius = '8px';
+                    emojiPickerContainer.style.boxShadow = '0 5px 30px rgba(0, 0, 0, 0.7)';
+                    emojiPickerContainer.style.border = 'none';
                     
                     // Show first category by default
                     const firstTab = tabsContainer.querySelector('.emoji-tab');
@@ -323,20 +338,18 @@
                     const pickerWidth = 400;
                     const pickerHeight = 450;
                     
-                    // Get message input container for positioning
+                    // Fixed positioning at bottom right, just above the input
+                    // Calculate where the input area is
                     const inputContainer = document.querySelector('.chat-input-container');
                     const inputRect = inputContainer.getBoundingClientRect();
                     
-                    // Position much higher above the input container
-                    let topPos = inputRect.top - pickerHeight - 80; // Increased gap to 80px
-                    
-                    // Center horizontally over the input
-                    let leftPos = inputRect.left + (inputRect.width / 2) - (pickerWidth / 2);
+                    // Shift the emoji picker up and to the left from previous position
+                    let topPos = inputRect.top - pickerHeight - 45; // Increased gap to move up (5px higher)
+                    let leftPos = inputRect.right - pickerWidth - 200; // Increased left margin (50px more to left)
                     
                     // Make sure it stays on screen
-                    topPos = Math.max(20, topPos); // At least 20px from top of screen
-                    leftPos = Math.max(20, leftPos); // At least 20px from left edge
-                    leftPos = Math.min(window.innerWidth - pickerWidth - 20, leftPos); // Not off right edge
+                    topPos = Math.max(20, topPos);
+                    leftPos = Math.max(20, leftPos);
                     
                     // Apply styles
                     emojiPickerContainer.style.position = 'fixed';
@@ -345,6 +358,7 @@
                     emojiPickerContainer.style.display = 'block';
                     emojiPickerContainer.style.visibility = 'visible';
                     emojiPickerContainer.style.opacity = '1';
+                    emojiPickerContainer.style.zIndex = '9999';
                     
                 } else {
                     emojiPickerContainer.style.display = 'none';
