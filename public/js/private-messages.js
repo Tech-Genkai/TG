@@ -59,6 +59,65 @@ document.addEventListener('DOMContentLoaded', function() {
     // Current active conversation
     let activeConversation = null;
 
+    // Add mobile conversation toggle functionality
+    function setupMobileConversationToggle() {
+        const chatHeader = document.getElementById('chat-header');
+        const conversationsHeader = document.querySelector('.conversations-header');
+        const conversationsList = document.querySelector('.conversations-list');
+        
+        // Function to toggle conversations list
+        function toggleConversationsList() {
+            conversationsList.classList.toggle('active');
+        }
+        
+        // Add click event to chat header to show conversations
+        if (chatHeader) {
+            chatHeader.addEventListener('click', function(e) {
+                // Only toggle if we're on mobile (check window width)
+                if (window.innerWidth <= 768) {
+                    // Don't toggle if clicking on the user profile link
+                    if (e.target.closest('#user-profile-link')) {
+                        return;
+                    }
+                    toggleConversationsList();
+                }
+            });
+        }
+        
+        // Add click event to conversations header to hide conversations
+        if (conversationsHeader) {
+            conversationsHeader.addEventListener('click', function(e) {
+                // Only toggle if we're on mobile
+                if (window.innerWidth <= 768) {
+                    toggleConversationsList();
+                }
+            });
+        }
+        
+        // Hide conversations list when a conversation is selected on mobile
+        if (conversationsContainer) {
+            conversationsContainer.addEventListener('click', function(e) {
+                const conversationItem = e.target.closest('.conversation-item');
+                if (conversationItem && window.innerWidth <= 768) {
+                    // Short delay to allow the conversation to load first
+                    setTimeout(() => {
+                        conversationsList.classList.remove('active');
+                    }, 100);
+                }
+            });
+        }
+        
+        // Handle window resize to reset mobile view
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                conversationsList.classList.remove('active');
+            }
+        });
+    }
+    
+    // Call the mobile setup function
+    setupMobileConversationToggle();
+    
     // Check URL for username parameter
     function checkUrlForUsername() {
         const path = window.location.pathname;

@@ -3,7 +3,6 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    min-width: 500px;
     background-color: black;
     margin: 0;
     font-family: Arial, sans-serif;
@@ -256,7 +255,8 @@ body {
     border-radius: 5px;
 }
 
-/* Responsive adjustment */
+/* Update responsive styles with more breakpoints and better mobile support */
+/* Larger mobile devices and small tablets (portrait mode) */
 @media (max-width: 810px) {
     .Org-logo{
         left: 20px;
@@ -325,6 +325,134 @@ body {
 
     .message {
         max-width: 85%;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    /* Navbar adjustments */
+    .navbar {
+        padding: 2px 10px;
+    }
+    
+    .Org-logo {
+        width: 40px;
+        overflow: hidden;
+    }
+    
+    .Org-logo img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .search-bar {
+        width: 130px;
+    }
+    
+    .search {
+        width: 130px;
+    }
+    
+    .nav-icons {
+        gap: 12px;
+        margin-right: 5px;
+    }
+    
+    .nav-icons a img {
+        width: 24px;
+        height: 24px;
+    }
+    
+    /* Sidebar positioning */
+    .sidebar {
+        width: 25px;
+        padding: 8px 5px;
+    }
+    
+    .sidebar a {
+        padding: 6px;
+        width: 25px;
+    }
+    
+    .sidebar a img {
+        width: 22px;
+        height: 22px;
+    }
+    
+    /* Content positioning */
+    .feed, .wrapper {
+        left: 35px;
+        width: calc(100% - 40px);
+    }
+    
+    /* Message styling */
+    .message {
+        max-width: 90%;
+        padding: 8px 10px;
+    }
+    
+    .message-content {
+        max-width: calc(100% - 35px);
+    }
+    
+    /* Chat adjustments */
+    .chat-input-container {
+        padding: 10px;
+    }
+    
+    #message-input {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    
+    .send-btn, .emoji-btn, .media-btn {
+        width: 32px;
+        height: 32px;
+        margin-left: 5px;
+    }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 360px) {
+    .navbar {
+        padding: 2px 5px;
+    }
+    
+    .Org-logo {
+        width: 36px;
+    }
+    
+    .Org-logo img {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .search-bar {
+        width: 100px;
+    }
+    
+    .search {
+        width: 100px;
+    }
+    
+    .nav-icons {
+        gap: 8px;
+        margin-right: 2px;
+    }
+    
+    .nav-icons a img {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .sidebar {
+        width: 22px;
+        padding: 5px 2px;
+    }
+    
+    .feed, .wrapper {
+        left: 28px;
+        width: calc(100% - 30px);
     }
 }
 
