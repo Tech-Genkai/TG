@@ -20,6 +20,45 @@ cloudinary.config({
 const server = http.createServer(app)
 const io = socketIo(server)
 
+// Track online users with last active timestamp
+const onlineUsers = new Map(); // username -> timestamp
+
+// Function to check if a user is online
+function isUserOnline(username) {
+    return onlineUsers.has(username);
+}
+
+// Function to mark a user as online
+function markUserOnline(username) {
+    onlineUsers.set(username, Date.now());
+    // Broadcast user online status to all clients
+    io.emit('user status', { username, status: 'online' });
+}
+
+// Function to mark a user as offline
+function markUserOffline(username) {
+    if (onlineUsers.has(username)) {
+        onlineUsers.delete(username);
+        // Broadcast user offline status to all clients
+        io.emit('user status', { username, status: 'offline' });
+    }
+}
+
+// Set up the cleanup job to run every 2 minutes
+setInterval(() => {
+    const now = Date.now();
+    const timeoutThreshold = 5 * 60 * 1000; // 5 minutes inactive = offline
+
+    // Check all online users
+    for (const [username, lastActive] of onlineUsers.entries()) {
+        // If user hasn't been active for more than the threshold, mark them offline
+        if (now - lastActive > timeoutThreshold) {
+            console.log(`User ${username} timed out - marking offline`);
+            markUserOffline(username);
+        }
+    }
+}, 2 * 60 * 1000); // Run every 2 minutes
+
 // Configure sanitize-html options (stricter than default)
 const sanitizeOptions = {
     allowedTags: [], // Don't allow any HTML tags
@@ -762,6 +801,9 @@ io.on('connection', async (socket) => {
     const displayName = socket.displayName;
     console.log(`User connected: ${displayName} (${username})`);
     
+    // Mark the user as online
+    markUserOnline(username);
+    
     // Get user's profile picture
     let profilePic = '/images/default-profile.png';
     try {
@@ -773,6 +815,10 @@ io.on('connection', async (socket) => {
     } catch (error) {
         console.error('Error fetching profile picture:', error);
     }
+    
+    // Send the current online users to the newly connected user
+    const onlineUsersList = Array.from(onlineUsers.keys());
+    socket.emit('online users', onlineUsersList);
     
     // Send chat history to the newly connected user
     try {
@@ -1016,9 +1062,24 @@ io.on('connection', async (socket) => {
         }
     });
     
+    // Handle user heartbeat to keep active status
+    socket.on('heartbeat', () => {
+        onlineUsers.set(username, Date.now());
+    });
+    
     // Handle disconnection
     socket.on('disconnect', async () => {
         console.log(`User disconnected: ${displayName} (${username})`);
+        
+        // Wait a short period before marking user as offline
+        // This helps with connection flaps and page refreshes
+        setTimeout(() => {
+            // Check if user has reconnected before marking offline
+            const userSockets = io.sockets.adapter.rooms.get(username);
+            if (!userSockets || userSockets.size === 0) {
+                markUserOffline(username);
+            }
+        }, 5000); // 5 seconds delay
     });
 });
 
@@ -1034,148 +1095,116 @@ app.get('/messages', (req, res) => {
 
 // Add endpoint to get conversation list
 app.get('/api/conversations', async (req, res) => {
+    const username = req.headers['x-username'];
+    
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+    
     try {
-        const username = req.headers['x-username'];
-        if (!username) {
-            return res.status(401).json({ error: 'User not authenticated' });
-        }
-        
-        console.log(`Fetching conversations for user: ${username}`);
-        
-        // Find all conversations where the user is a participant
+        // Find conversations for the user
         const conversations = await Conversation.find({
             participants: username
-        }).sort({ updatedAt: -1 }).limit(50);
+        }).sort({ lastActivity: -1 }); // Sort by most recent activity
         
-        console.log(`Found ${conversations.length} conversations`);
+        // Format conversations for response
+        const formattedConversations = await Promise.all(conversations.map(async (conv) => {
+            // Find the other user in the conversation
+            const otherUser = conv.participants.find(p => p !== username);
+            
+            // Get user details
+            const userDetails = await collection.findOne({ username: otherUser });
+            
+            if (!userDetails) {
+                return null; // Skip if user not found
+            }
+            
+            // Count unread messages
+            const unreadCount = await DirectMessage.countDocuments({
+                sender: otherUser,
+                recipient: username,
+                read: false
+            });
+            
+            // Check if user is online
+            const isOnline = isUserOnline(otherUser);
+            
+            return {
+                withUser: otherUser,
+                withUserDisplayName: userDetails.displayName || otherUser,
+                withUserProfilePic: userDetails.profilePic || '/images/default-profile.png',
+                lastMessage: conv.lastMessage,
+                lastMessageTime: conv.lastActivity,
+                unreadCount: unreadCount,
+                isOnline: isOnline
+            };
+        }));
         
-        // Get the other participant details for each conversation
-        const conversationsWithDetails = await Promise.all(
-            conversations.map(async (conversation) => {
-                // Determine the other participant
-                const otherParticipant = conversation.participants.find(p => p !== username);
-                
-                if (!otherParticipant) {
-                    console.warn(`No other participant found in conversation: ${conversation._id}`);
-                    return null;
-                }
-                
-                // Get other participant's details
-                const user = await collection.findOne({ username: otherParticipant });
-                
-                // Count unread messages
-                const unreadCount = await DirectMessage.countDocuments({
-                    sender: otherParticipant,
-                    recipient: username,
-                    read: false
-                });
-                
-                // Get the last message and sanitize it to preserve emoticons
-                const lastMessage = conversation.lastMessage || 'Start a conversation';
-                const sanitizedLastMessage = lastMessage ? sanitizeText(lastMessage) : lastMessage;
-                
-                return {
-                    id: conversation._id,
-                    withUser: otherParticipant,
-                    withUserDisplayName: user ? (user.displayName || otherParticipant) : otherParticipant,
-                    withUserProfilePic: user ? (user.profilePic || '/images/default-profile.png') : '/images/default-profile.png',
-                    lastMessage: sanitizedLastMessage,
-                    lastMessageTime: conversation.lastMessageTime || conversation.updatedAt,
-                    updatedAt: conversation.updatedAt,
-                    unreadCount: unreadCount
-                };
-            })
-        );
+        // Filter out null values (conversations with deleted users)
+        const filteredConversations = formattedConversations.filter(conv => conv !== null);
         
-        // Filter out any null values and send response
-        const validConversations = conversationsWithDetails.filter(conv => conv !== null);
-        res.json({ conversations: validConversations });
+        res.json({ conversations: filteredConversations });
     } catch (error) {
         console.error('Error fetching conversations:', error);
-        res.status(500).json({ error: 'Error fetching conversations' });
+        res.status(500).json({ error: 'Failed to load conversations' });
     }
 });
 
-// Add endpoint to get chat history between two users
-app.get('/api/messages/:username', async (req, res) => {
+// API to get messages between two users
+app.get('/api/messages/:otherUsername', async (req, res) => {
+    const username = req.headers['x-username'];
+    const otherUsername = req.params.otherUsername;
+    
+    if (!username || !otherUsername) {
+        return res.status(400).json({ error: 'Both usernames are required' });
+    }
+    
     try {
-        const currentUser = req.headers['x-username'];
-        const otherUser = req.params.username;
-        
-        if (!currentUser) {
-            return res.status(401).json({ error: 'User not authenticated' });
-        }
-        
-        console.log(`Fetching messages between ${currentUser} and ${otherUser}`);
-        
-        // Validate other user exists
-        const user = await collection.findOne({ username: otherUser });
-        if (!user) {
-            console.warn(`User not found: ${otherUser}`);
+        // Get otherUser details
+        const otherUser = await collection.findOne({ username: otherUsername });
+        if (!otherUser) {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Get messages exchanged between the two users (in both directions)
+        // Check if user is online
+        const isOnline = isUserOnline(otherUsername);
+        
+        // Find messages between the two users
         const messages = await DirectMessage.find({
             $or: [
-                { sender: currentUser, recipient: otherUser },
-                { sender: otherUser, recipient: currentUser }
+                { sender: username, recipient: otherUsername },
+                { sender: otherUsername, recipient: username }
             ]
-        }).sort({ timestamp: 1 }).limit(100);
+        }).sort({ timestamp: 1 }); // Sort by timestamp (oldest first)
         
-        console.log(`Found ${messages.length} messages`);
-        
-        // Get profile information for both users
-        const currentUserProfile = await collection.findOne({ username: currentUser });
-        const otherUserProfile = user;
-        
-        // Format the messages for the client
+        // Format messages for the client
         const formattedMessages = messages.map(msg => {
-            const isSelf = msg.sender === currentUser;
-            const sender = isSelf ? currentUserProfile : otherUserProfile;
-            
+            const isSelf = msg.sender === username;
             return {
                 id: msg._id,
                 sender: msg.sender,
-                senderDisplayName: sender ? (sender.displayName || msg.sender) : msg.sender,
-                senderProfilePic: sender ? (sender.profilePic || '/images/default-profile.png') : '/images/default-profile.png',
-                recipient: msg.recipient,
                 text: msg.text,
                 timestamp: msg.timestamp,
-                read: msg.read,
+                media: msg.media || null,
                 isSelf: isSelf,
-                media: msg.media || null
+                read: msg.read,
+                senderDisplayName: isSelf ? null : (otherUser.displayName || otherUsername),
+                senderProfilePic: isSelf ? null : (otherUser.profilePic || '/images/default-profile.png')
             };
         });
         
-        // Mark messages as read
-        const updateResult = await DirectMessage.updateMany(
-            { sender: otherUser, recipient: currentUser, read: false },
-            { $set: { read: true } }
-        );
-        
-        console.log(`Marked ${updateResult.modifiedCount} messages as read`);
-        
-        // Notify the other user that their messages were read (if any messages were marked as read)
-        if (updateResult.modifiedCount > 0) {
-            io.to(otherUser).emit('messages read', { 
-                by: currentUser,
-                count: updateResult.modifiedCount
-            });
-        }
-        
-        // Return messages and user profile info
         res.json({
             messages: formattedMessages,
             user: {
-                username: otherUser,
-                displayName: otherUserProfile.displayName || otherUser,
-                profilePic: otherUserProfile.profilePic || '/images/default-profile.png'
+                username: otherUsername,
+                displayName: otherUser.displayName || otherUsername,
+                profilePic: otherUser.profilePic || '/images/default-profile.png',
+                isOnline: isOnline
             }
         });
     } catch (error) {
         console.error('Error fetching messages:', error);
-        res.status(500).json({ error: 'Error fetching messages', details: error.message });
+        res.status(500).json({ error: 'Error fetching messages' });
     }
 });
 
@@ -1718,5 +1747,37 @@ app.post("/upload-media", upload.single('file'), async (req, res) => {
     } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ error: "Failed to upload file" });
+    }
+});
+
+// API to get user profile by username
+app.get("/api/user/:username", async(req, res) => {
+    try {
+        const username = req.params.username;
+        if (!username) {
+            return res.status(400).json({ error: "Username is required" });
+        }
+
+        // Find user
+        const user = await collection.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // Check if user is online
+        const isOnline = isUserOnline(username);
+
+        // Return user profile info
+        res.json({
+            username: user.username,
+            displayName: user.displayName || user.username,
+            bio: user.bio || "",
+            profilePic: user.profilePic || "/images/default-profile.png",
+            joinDate: user.createdAt,
+            isOnline: isOnline
+        });
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        res.status(500).json({ error: "Error fetching user profile" });
     }
 });

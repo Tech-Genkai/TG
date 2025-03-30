@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 right: 6px;
                 bottom: 2px;
                 font-size: 0.8rem;
+                z-index: 2;
             }
             
             /* Special positioning for short messages */
@@ -138,6 +139,84 @@ document.addEventListener('DOMContentLoaded', function() {
                 justify-content: flex-end;
                 margin-top: 2px;
             }
+            
+            /* Online status indicator in conversation list */
+            .online-indicator {
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                width: 12px;
+                height: 12px;
+                background-color: #4CAF50;
+                border-radius: 50%;
+                border: 2px solid #191919;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+                transform: translate(2px, 2px); /* Move slightly out from the circle edge */
+                z-index: 2; /* Ensure indicator appears above the image */
+            }
+            
+            /* Online status indicator in chat header */
+            .user-status {
+                display: inline-flex;
+                align-items: center;
+                font-size: 0.8rem;
+                margin-left: 8px;
+                color: rgba(255, 255, 255, 0.7);
+            }
+            
+            .user-status.online {
+                color: #4CAF50;
+            }
+            
+            .user-status.offline {
+                color: rgba(255, 255, 255, 0.5);
+            }
+            
+            .user-status i {
+                margin-right: 4px;
+                font-size: 0.9rem;
+            }
+            
+            /* Position wrapper for profile pic to accommodate status indicator */
+            .conversation-profile-pic {
+                position: relative;
+                overflow: visible; /* Prevent cropping of indicators */
+                z-index: 1;
+            }
+            
+            .conversation-profile-pic img {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+            
+            /* Ensure unread indicators are visible and not cropped */
+            .unread-indicator {
+                position: absolute;
+                top: -5px;
+                right: -5px;
+                background-color: #f218d9;
+                color: white;
+                font-size: 11px;
+                min-width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid #191919;
+                z-index: 3;
+            }
+            
+            /* Message badge for navbar and sidebar */
+            /* Styles now in style.css */
+            
+            /* Special styling for sidebar badge */
+            /* Styles now in style.css */
+            
+            /* Hover effect */
+            /* Styles now in style.css */
         `;
         document.head.appendChild(styleTag);
     }
@@ -344,7 +423,17 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 openConversation(urlUsername);
             }, 500);
+        } else {
+            // If not opening a specific conversation, update unread badges
+            setTimeout(() => {
+                updateUnreadMessageBadges();
+            }, 1000);
         }
+        
+        // Start sending heartbeats every minute to keep online status
+        setInterval(() => {
+            socket.emit('heartbeat');
+        }, 60 * 1000); // every minute
     });
     
     // Handle connection errors
@@ -400,6 +489,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Track online users
+    const onlineUsers = new Set();
+
     // Render conversations list
     function renderConversations(conversations) {
         if (!conversations || conversations.length === 0) {
@@ -423,16 +515,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 conversationItem.classList.add('active');
             }
             
-            const lastMessageDate = new Date(conv.lastMessageTime);
-            const formattedTime = formatTime(lastMessageDate);
+            // Format timestamp properly, handling invalid dates
+            let formattedTime = '';
+            if (conv.lastMessageTime) {
+                const lastMessageDate = new Date(conv.lastMessageTime);
+                if (!isNaN(lastMessageDate.getTime())) {
+                    formattedTime = formatTime(lastMessageDate);
+                }
+            }
             
             // Sanitize the last message to preserve emoticons
-            const sanitizedLastMessage = sanitizeWithEmoticons(conv.lastMessage);
+            const sanitizedLastMessage = sanitizeWithEmoticons(conv.lastMessage || '');
+            
+            // Check if user is online
+            const isOnline = conv.isOnline || onlineUsers.has(conv.withUser);
             
             conversationItem.innerHTML = `
                 <div class="conversation-profile-pic">
                     <img src="${conv.withUserProfilePic}" alt="${conv.withUserDisplayName}">
                     ${conv.unreadCount > 0 ? `<div class="unread-indicator">${conv.unreadCount}</div>` : ''}
+                    ${isOnline ? '<div class="online-indicator"></div>' : ''}
                 </div>
                 <div class="conversation-details">
                     <div class="conversation-header">
@@ -452,39 +554,39 @@ document.addEventListener('DOMContentLoaded', function() {
             
             conversationsContainer.appendChild(conversationItem);
         });
+        
+        // Update unread message badges after rendering conversations
+        updateUnreadMessageBadges();
     }
     
-    // Open a conversation with improved loading and animation
+    // Open conversation
     function openConversation(withUsername) {
+        if (!withUsername) return;
+        
         console.log('Opening conversation with:', withUsername);
         activeConversation = withUsername;
         
-        // Update UI
-        emptyState.style.display = 'none';
-        chatContainer.style.display = 'flex';
-        
-        // Update active class in conversations list
+        // Mark the conversation as active
         const conversationItems = document.querySelectorAll('.conversation-item');
         conversationItems.forEach(item => {
+            item.classList.remove('active');
             if (item.dataset.username === withUsername) {
                 item.classList.add('active');
-                // Remove unread indicator
-                const unreadIndicator = item.querySelector('.unread-indicator');
-                if (unreadIndicator) {
-                    unreadIndicator.remove();
-                }
-            } else {
-                item.classList.remove('active');
             }
         });
         
-        // Reset message grouping
-        lastMessageSender = null;
-        lastMessageTime = null;
-        lastMessageWrapper = null;
+        // Mark conversation as read when opening
+        markConversationAsRead(withUsername);
         
-        // Force no-smooth scrolling during load
-        messagesContainer.classList.add('loading-messages-no-scroll');
+        // Show messages container and hide empty state
+        if (chatContainer) {
+            chatContainer.style.display = 'flex';
+        }
+        
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
+        
         messagesContainer.classList.add('optimized-scroll');
         
         // Clear messages container
@@ -531,10 +633,33 @@ document.addEventListener('DOMContentLoaded', function() {
             messagesWrapper.style.transform = 'translateZ(0)';
             messagesContainer.appendChild(messagesWrapper);
             
-            // Update user info in header
+            // Update user info in header with online status
             userNameElement.textContent = data.user.displayName;
             userPicElement.src = data.user.profilePic;
             userProfileLink.href = `/user/${data.user.username}`;
+            
+            // Add or update the user status indicator
+            const chatHeaderDetails = document.querySelector('.user-details');
+            
+            // Remove existing status indicator if any
+            const existingStatus = chatHeaderDetails.querySelector('.user-status');
+            if (existingStatus) {
+                existingStatus.remove();
+            }
+            
+            // Get online status
+            const isOnline = data.user.isOnline || onlineUsers.has(data.user.username);
+            
+            // Create new status indicator
+            const statusIndicator = document.createElement('div');
+            statusIndicator.className = `user-status ${isOnline ? 'online' : 'offline'}`;
+            statusIndicator.innerHTML = isOnline 
+                ? '<i class="bi bi-circle-fill"></i> Online'
+                : '<i class="bi bi-circle"></i> Offline';
+            statusIndicator.dataset.username = data.user.username;
+            
+            // Add to the chat header
+            chatHeaderDetails.appendChild(statusIndicator);
             
             // Mark messages as read
             socket.emit('mark messages read', { conversationWith: withUsername });
@@ -693,6 +818,8 @@ document.addEventListener('DOMContentLoaded', function() {
             notifications.info('New Message', `${msg.senderDisplayName} sent you a message`);
             // Reload conversations to show the new message
             loadConversations();
+            // Update unread message badges
+            updateUnreadMessageBadges();
         }
     });
     
@@ -701,6 +828,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Conversation update received:', data);
         // Refresh conversations list
         loadConversations();
+        // Update unread message badges
+        updateUnreadMessageBadges();
     });
     
     // Handle socket errors
@@ -716,6 +845,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (activeConversation === data.by) {
             updateMessageReadStatus(data.by);
         }
+    });
+    
+    // Handle online users list
+    socket.on('online users', (users) => {
+        console.log('Received online users list:', users);
+        onlineUsers.clear();
+        users.forEach(user => onlineUsers.add(user));
+        
+        // Update UI for conversations
+        updateOnlineStatusInUI();
+    });
+    
+    // Handle user status updates
+    socket.on('user status', (data) => {
+        console.log('User status update:', data);
+        
+        if (data.status === 'online') {
+            onlineUsers.add(data.username);
+        } else {
+            onlineUsers.delete(data.username);
+        }
+        
+        // Update UI for this user
+        updateOnlineStatusInUI(data.username);
     });
     
     // Function to update read status of messages
@@ -776,6 +929,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 messageEl.appendChild(readIndicator);
             }
         });
+    }
+    
+    // Function to update online status indicators in UI
+    function updateOnlineStatusInUI(specificUsername = null) {
+        // Update conversation list items
+        const conversations = document.querySelectorAll('.conversation-item');
+        conversations.forEach(conv => {
+            const username = conv.dataset.username;
+            
+            // If we're updating for a specific user only, skip others
+            if (specificUsername && username !== specificUsername) {
+                return;
+            }
+            
+            const isOnline = onlineUsers.has(username);
+            const profilePic = conv.querySelector('.conversation-profile-pic');
+            
+            // Remove existing indicator if present
+            const existingIndicator = profilePic.querySelector('.online-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            // Add indicator if online
+            if (isOnline) {
+                const indicator = document.createElement('div');
+                indicator.className = 'online-indicator';
+                profilePic.appendChild(indicator);
+            }
+        });
+        
+        // Update status in chat header if in a conversation
+        if (activeConversation) {
+            const statusIndicator = document.querySelector(`.user-status[data-username="${activeConversation}"]`);
+            if (statusIndicator) {
+                const isOnline = onlineUsers.has(activeConversation);
+                statusIndicator.className = `user-status ${isOnline ? 'online' : 'offline'}`;
+                statusIndicator.innerHTML = isOnline 
+                    ? '<i class="bi bi-circle-fill"></i> Online'
+                    : '<i class="bi bi-circle"></i> Offline';
+            }
+        }
     }
     
     // Add a message to the chat
@@ -1336,5 +1531,82 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!targetContainer) {
             scrollToBottom();
         }
+    }
+
+    // Function to update unread message badges in navbar and sidebar
+    function updateUnreadMessageBadges() {
+        // Get all conversation items to count total unread messages
+        const conversationItems = document.querySelectorAll('.conversation-item');
+        let totalUnread = 0;
+        
+        // Count all unread messages
+        conversationItems.forEach(item => {
+            const unreadIndicator = item.querySelector('.unread-indicator');
+            if (unreadIndicator) {
+                const count = parseInt(unreadIndicator.textContent);
+                if (!isNaN(count)) {
+                    totalUnread += count;
+                }
+            }
+        });
+        
+        console.log('Total unread messages:', totalUnread);
+        
+        // No longer adding badge to navbar message icon
+        
+        // Update sidebar message icon badge
+        const sidebarMessageIcon = document.querySelector('.sidebar a[title="Messages"]') || 
+                                  document.querySelector('.sidebar a[href="/messages"]');
+        
+        if (sidebarMessageIcon) {
+            // Remove existing badge if present
+            const existingBadge = sidebarMessageIcon.querySelector('.message-badge');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+            
+            // Add badge if there are unread messages
+            if (totalUnread > 0) {
+                const badge = document.createElement('div');
+                badge.className = 'message-badge';
+                badge.textContent = totalUnread > 99 ? '99+' : totalUnread;
+                sidebarMessageIcon.style.position = 'relative';
+                sidebarMessageIcon.appendChild(badge);
+            }
+        }
+        
+        // Save the unread count to localStorage so other pages can access it
+        localStorage.setItem('unreadMessageCount', totalUnread);
+    }
+
+    // Mark conversation as read
+    function markConversationAsRead(username) {
+        if (!username) return;
+        
+        fetch(`/api/conversations/${username}/read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Conversation marked as read', username);
+                // Get the conversation item and remove unread indicator
+                const conversationItem = document.querySelector(`.conversation-item[data-username="${username}"]`);
+                if (conversationItem) {
+                    const unreadIndicator = conversationItem.querySelector('.unread-indicator');
+                    if (unreadIndicator) {
+                        unreadIndicator.remove();
+                    }
+                }
+                // Update unread badges after marking as read
+                updateUnreadMessageBadges();
+            }
+        })
+        .catch(err => {
+            console.error('Error marking conversation as read:', err);
+        });
     }
 }); 

@@ -28,7 +28,86 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('friendBtn').addEventListener('click', function() {
         handleFriendAction(targetUsername);
     });
+    
+    // Connect to Socket.io to get real-time online status updates
+    connectToSocketIO(targetUsername);
 });
+
+// Set up socket connection and online status tracking
+let socket;
+const onlineUsers = new Set();
+
+function connectToSocketIO(targetUsername) {
+    const username = localStorage.getItem('username');
+    
+    // Connect to Socket.io
+    socket = io({
+        auth: { username }
+    });
+    
+    // Handle connection
+    socket.on('connect', () => {
+        console.log('Connected to chat server for profile online status');
+        
+        // Start sending heartbeats every minute to keep online status
+        setInterval(() => {
+            socket.emit('heartbeat');
+        }, 60 * 1000); // every minute
+    });
+    
+    // Handle online users list
+    socket.on('online users', (users) => {
+        console.log('Received online users list with', users.length, 'users');
+        onlineUsers.clear();
+        users.forEach(user => onlineUsers.add(user));
+        
+        // Update online status indicator
+        updateOnlineStatus(targetUsername);
+    });
+    
+    // Handle user status updates
+    socket.on('user status', (data) => {
+        console.log('User status update:', data.username, data.status);
+        
+        if (data.status === 'online') {
+            onlineUsers.add(data.username);
+        } else {
+            onlineUsers.delete(data.username);
+        }
+        
+        // Only update UI if it's the user we're viewing
+        if (data.username === targetUsername) {
+            updateOnlineStatus(targetUsername);
+        }
+    });
+}
+
+// Update the online status indicator in the UI
+function updateOnlineStatus(username) {
+    const isOnline = onlineUsers.has(username);
+    
+    // Remove existing status indicator if any
+    const existingStatus = document.getElementById('onlineStatusIndicator');
+    if (existingStatus) {
+        existingStatus.remove();
+    }
+    
+    // Add new status indicator text next to username
+    const statusIndicator = document.createElement('div');
+    statusIndicator.id = 'onlineStatusIndicator';
+    statusIndicator.className = `user-status ${isOnline ? 'online' : 'offline'}`;
+    statusIndicator.innerHTML = isOnline 
+        ? '<i class="bi bi-circle-fill"></i> Online'
+        : '<i class="bi bi-circle"></i> Offline';
+    
+    // Add to the profile info after the username
+    const usernameEl = document.getElementById('userUsername');
+    if (usernameEl && usernameEl.parentNode) {
+        usernameEl.parentNode.insertBefore(statusIndicator, usernameEl.nextSibling);
+    }
+    
+    // No longer adding the indicator to the profile picture
+}
 
 async function fetchUserProfile(username) {
     try {
@@ -70,6 +149,18 @@ async function fetchUserProfile(username) {
         // Update friendship UI if status is provided in the response
         if (data.friendshipStatus) {
             updateFriendshipUI(data.friendshipStatus, username);
+        }
+        
+        // Check if the API already provides online status
+        if (data.isOnline !== undefined) {
+            // Store in our local tracking
+            if (data.isOnline) {
+                onlineUsers.add(username);
+            } else {
+                onlineUsers.delete(username);
+            }
+            // Update the UI
+            updateOnlineStatus(username);
         }
     } catch (error) {
         console.error('Error fetching user profile:', error);

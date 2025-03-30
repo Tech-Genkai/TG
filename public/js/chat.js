@@ -72,6 +72,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Store incoming messages until we're ready to display them
     let pendingMessages = [];
     let initialLoadComplete = false;
+    
+    // Track online users
+    const onlineUsers = new Set();
 
     // Handle connection
     socket.on('connect', () => {
@@ -92,6 +95,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add a class to force scroll position to bottom without animation
         messagesContainer.classList.add('loading-messages-no-scroll');
+        
+        // Start sending heartbeats every minute to keep online status
+        setInterval(() => {
+            socket.emit('heartbeat');
+        }, 60 * 1000); // every minute
     });
 
     // Handle connection errors
@@ -135,6 +143,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         addSystemMessage(data.text);
+    });
+
+    // Handle online users list
+    socket.on('online users', (users) => {
+        console.log('Received online users list with', users.length, 'users');
+        onlineUsers.clear();
+        users.forEach(user => onlineUsers.add(user));
+        
+        // Update message containers with online status
+        updateOnlineStatusInMessages();
+    });
+    
+    // Handle user status updates
+    socket.on('user status', (data) => {
+        console.log('User status update:', data.username, data.status);
+        
+        if (data.status === 'online') {
+            onlineUsers.add(data.username);
+        } else {
+            onlineUsers.delete(data.username);
+        }
+        
+        // Update message containers for this specific user
+        updateOnlineStatusInMessages(data.username);
     });
 
     // Once we have all the messages, display them
@@ -214,149 +246,170 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to add a message to the chat
-    function addMessage(msg, targetContainer = null) {
+    function addMessage(msg, noScroll = false) {
         const currentSender = msg.username;
         const currentTime = msg.timestamp;
-        const isOwnMessage = currentSender === username;
-        const messageText = msg.text || '';
         
-        // Use the provided container or the default messagesContainer
-        const container = targetContainer || messagesContainer;
+        // Create message container
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container';
         
-        // Better short message detection - catch more phrases
-        const isShortMessage = messageText.length <= 30 && !messageText.includes('\n');
+        // Store username as data attribute for online status updates
+        messageContainer.dataset.username = currentSender;
         
         // Check if this message should be grouped with the previous one
         if (shouldGroupMessages(currentSender, currentTime)) {
             const messageElement = document.createElement('div');
-            messageElement.className = 'message ' + 
-                (isOwnMessage ? 'message-own' : 'message-other') + ' consecutive-message';
+            messageElement.className = 'message ' + (currentSender === username ? 'message-own' : 'message-other');
             
-            if (isShortMessage) {
+            if (isShortMessage(msg.text)) {
                 messageElement.classList.add('short-message');
             }
             
-            const textSpan = document.createElement('span');
-            textSpan.className = 'message-text';
+            // Create message content
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
             
-            // Handle media if present
-            if (msg.media) {
-                const mediaElement = createMediaElement(msg.media);
-                textSpan.appendChild(mediaElement);
+            const messageText = document.createElement('div');
+            messageText.className = 'message-text';
+            
+            // Handle media content if present
+            if (msg.media && typeof msg.media === 'object' && msg.media.url) {
+                const mediaContent = createMediaElement(msg.media);
+                if (mediaContent) {
+                    messageText.appendChild(mediaContent);
+                }
             }
             
-            // Add text if present
-            if (messageText) {
-                const textNode = document.createElement('span');
-                textNode.innerHTML = formatMessageText(messageText);
-                textSpan.appendChild(textNode);
+            // Add text content if present
+            if (msg.text && msg.text.trim()) {
+                const textSpan = document.createElement('span');
+                textSpan.innerHTML = formatMessageText(msg.text);
+                messageText.appendChild(textSpan);
             }
             
-            messageElement.appendChild(textSpan);
-            
-            const messageContent = lastMessageWrapper.querySelector('.message-content');
+            messageElement.appendChild(messageText);
             messageContent.appendChild(messageElement);
             
+            lastMessageWrapper.querySelector('.message-content').appendChild(messageContent);
+            
+            // Update last message time
             lastMessageTime = currentTime;
-            scrollToBottom();
+            
+            // Scroll to bottom if needed
+            if (!noScroll) {
+                scrollToBottom(true);
+            }
+            
             return;
         }
         
-        // Create new message container
-        const messageContainer = document.createElement('div');
-        messageContainer.className = 'message-container';
-        
+        // Create a new message wrapper for non-consecutive messages
         const messageWrapper = document.createElement('div');
-        messageWrapper.className = isOwnMessage ? 'message-wrapper own' : 'message-wrapper';
+        messageWrapper.className = currentSender === username ? 'message-wrapper own' : 'message-wrapper';
         
         // Add profile picture
         const profilePic = document.createElement('div');
         profilePic.className = 'message-profile-pic';
         
         const profilePicLink = document.createElement('a');
-        profilePicLink.href = `/user/${msg.username}`;
-        profilePicLink.title = `View ${msg.displayName || msg.username}'s profile`;
+        profilePicLink.href = currentSender === username ? '/profile' : `/user/${currentSender}`;
+        profilePicLink.title = `View ${currentSender === username ? 'your' : `${msg.displayName}'s`} profile`;
         
         const profileImg = document.createElement('img');
         profileImg.src = msg.profilePic || '/images/default-profile.png';
-        profileImg.alt = msg.displayName || msg.username;
+        profileImg.alt = msg.displayName || currentSender;
+        profileImg.loading = 'lazy'; // Add lazy loading
         
         profilePicLink.appendChild(profileImg);
         profilePic.appendChild(profilePicLink);
         
+        // Add online indicator if the user is online (and not the current user)
+        if (currentSender !== username && onlineUsers.has(currentSender)) {
+            const onlineIndicator = document.createElement('div');
+            onlineIndicator.className = 'online-indicator';
+            profilePic.appendChild(onlineIndicator);
+        }
+        
+        // Create message content
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
+        // Add message header with username and timestamp
         const header = document.createElement('div');
         header.className = 'message-header';
         
         const sender = document.createElement('a');
         sender.className = 'message-sender';
-        sender.textContent = msg.displayName || msg.username;
-        sender.href = `/user/${msg.username}`;
-        sender.title = `View ${msg.displayName || msg.username}'s profile`;
+        sender.href = currentSender === username ? '/profile' : `/user/${currentSender}`;
+        sender.textContent = (currentSender === username) ? 'You' : (msg.displayName || currentSender);
         
-        let timestamp;
-        if (msg.timestamp) {
-            timestamp = document.createElement('span');
-            timestamp.className = 'message-time';
-            timestamp.textContent = formatTime(new Date(msg.timestamp));
-        }
+        const timestamp = document.createElement('span');
+        timestamp.className = 'message-time';
+        timestamp.textContent = formatTimestamp(new Date(currentTime));
         
-        if (isOwnMessage) {
+        // Arrange header differently for own vs others' messages
+        if (currentSender === username) {
+            // For own messages, show timestamp then You (right-aligned)
             header.style.flexDirection = 'row-reverse';
             header.style.textAlign = 'right';
-            if (timestamp) {
-                timestamp.style.marginLeft = '0';
-                timestamp.style.marginRight = '8px';
-                header.appendChild(timestamp);
-            }
+            timestamp.style.marginRight = '8px';
+            header.appendChild(timestamp);
             header.appendChild(sender);
         } else {
+            // For others' messages, show name then timestamp (left-aligned)
             header.appendChild(sender);
-            if (timestamp) header.appendChild(timestamp);
+            header.appendChild(timestamp);
         }
         
         messageContent.appendChild(header);
         
+        // Create message bubble
         const messageElement = document.createElement('div');
-        messageElement.className = 'message ' + 
-            (isOwnMessage ? 'message-own' : 'message-other');
+        messageElement.className = 'message ' + (currentSender === username ? 'message-own' : 'message-other');
         
-        if (isShortMessage) {
+        if (isShortMessage(msg.text)) {
             messageElement.classList.add('short-message');
         }
         
-        const textSpan = document.createElement('span');
-        textSpan.className = 'message-text';
+        const messageText = document.createElement('div');
+        messageText.className = 'message-text';
         
-        // Handle media if present
-        if (msg.media) {
-            const mediaElement = createMediaElement(msg.media);
-            textSpan.appendChild(mediaElement);
+        // Handle media content if present
+        if (msg.media && typeof msg.media === 'object' && msg.media.url) {
+            const mediaContent = createMediaElement(msg.media);
+            if (mediaContent) {
+                messageText.appendChild(mediaContent);
+            }
         }
         
-        // Add text if present
-        if (messageText) {
-            const textNode = document.createElement('span');
-            textNode.innerHTML = formatMessageText(messageText);
-            textSpan.appendChild(textNode);
+        // Add text content if present
+        if (msg.text && msg.text.trim()) {
+            const textSpan = document.createElement('span');
+            textSpan.innerHTML = formatMessageText(msg.text);
+            messageText.appendChild(textSpan);
         }
         
-        messageElement.appendChild(textSpan);
+        messageElement.appendChild(messageText);
         messageContent.appendChild(messageElement);
         
+        // Assemble the message container
         messageWrapper.appendChild(profilePic);
         messageWrapper.appendChild(messageContent);
-        
         messageContainer.appendChild(messageWrapper);
-        container.appendChild(messageContainer);
         
+        // Add to messages container
+        messagesContainer.appendChild(messageContainer);
+        
+        // Update tracking variables for message grouping
         lastMessageSender = currentSender;
         lastMessageTime = currentTime;
         lastMessageWrapper = messageWrapper;
         
-        scrollToBottom();
+        // Scroll to bottom if needed
+        if (!noScroll) {
+            scrollToBottom(true);
+        }
     }
 
     // Function to add a system message
@@ -732,6 +785,58 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.body.appendChild(progress);
         return progress;
+    }
+
+    // Function to update online status in message containers
+    function updateOnlineStatusInMessages(specificUsername = null) {
+        const messageContainers = document.querySelectorAll('.message-container');
+        
+        messageContainers.forEach(container => {
+            const username = container.dataset.username;
+            
+            // If we only want to update a specific user, skip others
+            if (specificUsername && username !== specificUsername) {
+                return;
+            }
+            
+            // Skip user's own messages
+            if (username === localStorage.getItem('username')) {
+                return;
+            }
+            
+            // Only proceed if we have a username
+            if (!username) return;
+            
+            const profilePic = container.querySelector('.message-profile-pic');
+            if (!profilePic) return;
+            
+            // Remove existing indicator if any
+            const existingIndicator = profilePic.querySelector('.online-indicator');
+            if (existingIndicator) {
+                existingIndicator.remove();
+            }
+            
+            // Add indicator if user is online
+            if (onlineUsers.has(username)) {
+                const indicator = document.createElement('div');
+                indicator.className = 'online-indicator';
+                profilePic.appendChild(indicator);
+            }
+        });
+    }
+
+    // Helper function to check if a message is short
+    function isShortMessage(text) {
+        if (!text) return true;
+        const trimmedText = text.trim();
+        return trimmedText.length <= 30 && !trimmedText.includes('\n');
+    }
+
+    // Format timestamp for display
+    function formatTimestamp(date) {
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
     }
 
     // Initialize emoji picker

@@ -43,6 +43,27 @@ function updateProfileDisplay(userData) {
     document.getElementById('username').textContent = '@' + userData.username;
     document.getElementById('gender').textContent = userData.gender;
     
+    // Add online status indicator (always online for your own profile)
+    const usernameElement = document.getElementById('username');
+    if (usernameElement && usernameElement.parentNode) {
+        // Remove existing status if any
+        const existingStatus = document.getElementById('onlineStatusIndicator');
+        if (existingStatus) {
+            existingStatus.remove();
+        }
+        
+        // Create online status indicator
+        const statusIndicator = document.createElement('div');
+        statusIndicator.id = 'onlineStatusIndicator';
+        statusIndicator.className = 'user-status online';
+        statusIndicator.innerHTML = '<i class="bi bi-circle-fill"></i> Online';
+        
+        // Insert after username
+        usernameElement.parentNode.insertBefore(statusIndicator, usernameElement.nextSibling);
+    }
+    
+    // No longer adding online indicator to profile picture
+    
     // Update friend count
     const friendCountElement = document.getElementById('friendCount');
     if (friendCountElement) {
@@ -394,274 +415,5 @@ function renderFriendsList(friends) {
 }
 
 function renderFriendRequests(requests) {
-    const requestsElement = document.getElementById('friendRequests');
-    
-    if (!requestsElement) {
-        console.error('Friend requests element not found');
-        return;
-    }
-    
-    // Clear current content
-    requestsElement.innerHTML = '';
-    
-    if (!requests || requests.length === 0) {
-        const noRequestsElement = document.createElement('div');
-        noRequestsElement.className = 'no-requests';
-        noRequestsElement.textContent = 'No pending friend requests';
-        requestsElement.appendChild(noRequestsElement);
-        return;
-    }
-    
-    // Render each request
-    requests.forEach(request => {
-        const requestCard = document.createElement('div');
-        requestCard.className = 'request-card';
-        
-        requestCard.innerHTML = `
-            <img src="${request.profilePic || '/images/default-profile.png'}" alt="${request.displayName}">
-            <div class="request-info">
-                <h3>${request.displayName}</h3>
-                <p>@${request.username}</p>
-                <div class="request-actions">
-                    <button class="request-btn accept-btn" data-id="${request.requestId}">Accept</button>
-                    <button class="request-btn reject-btn" data-id="${request.requestId}">Reject</button>
-                </div>
-            </div>
-        `;
-        
-        requestsElement.appendChild(requestCard);
-        
-        // Add event listeners
-        const acceptBtn = requestCard.querySelector('.accept-btn');
-        const rejectBtn = requestCard.querySelector('.reject-btn');
-        
-        if (acceptBtn) {
-            acceptBtn.addEventListener('click', function() {
-                handleFriendRequest(request.requestId, 'accept');
-            });
-        }
-        
-        if (rejectBtn) {
-            rejectBtn.addEventListener('click', function() {
-                handleFriendRequest(request.requestId, 'reject');
-            });
-        }
-    });
+    // Implementation of renderFriendRequests function
 }
-
-async function handleFriendRequest(requestId, action) {
-    try {
-        const username = localStorage.getItem('username');
-        
-        const response = await fetch(`/api/friends/requests/${requestId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-username': username
-            },
-            body: JSON.stringify({ action })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Show success notification
-            notifications.success(
-                action === 'accept' ? 'Friend Added' : 'Request Rejected',
-                data.message
-            );
-            
-            // Reload friend requests and friends
-            loadFriendRequests();
-            if (action === 'accept') {
-                loadFriends();
-            }
-        } else {
-            notifications.error('Error', data.message || 'Failed to process request');
-        }
-    } catch (error) {
-        console.error(`Error ${action}ing friend request:`, error);
-        notifications.error('Error', `Failed to ${action} friend request`);
-    }
-}
-
-// Populate the edit form with current profile data
-function populateEditForm() {
-    const userData = profileManager.profileData;
-    if (!userData) return;
-    
-    const displayNameInput = document.getElementById('editDisplayName');
-    const genderSelect = document.getElementById('editGender');
-    const dobInput = document.getElementById('editDob');
-    
-    if (displayNameInput) displayNameInput.value = userData.displayName || '';
-    if (genderSelect) genderSelect.value = userData.gender || '';
-    
-    // Format date for the date input (YYYY-MM-DD)
-    if (dobInput && userData.dob && userData.dob !== 'Not specified') {
-        try {
-            const dobDate = new Date(userData.dob);
-            if (!isNaN(dobDate.getTime())) {
-                const year = dobDate.getFullYear();
-                const month = String(dobDate.getMonth() + 1).padStart(2, '0');
-                const day = String(dobDate.getDate()).padStart(2, '0');
-                dobInput.value = `${year}-${month}-${day}`;
-            }
-        } catch (e) {
-            console.error('Error formatting date for input:', e);
-        }
-    }
-}
-
-// Handle profile update
-async function updateProfile() {
-    const displayNameInput = document.getElementById('editDisplayName');
-    const genderSelect = document.getElementById('editGender');
-    const dobInput = document.getElementById('editDob');
-    
-    const displayName = displayNameInput ? displayNameInput.value.trim() : '';
-    const gender = genderSelect ? genderSelect.value : '';
-    const dateOfBirth = dobInput ? dobInput.value : '';
-    
-    try {
-        const success = await profileManager.updateProfileDetails(displayName, gender, dateOfBirth);
-        
-        if (success) {
-            // Close the modal
-            const editProfileModal = document.getElementById('editProfileModal');
-            if (editProfileModal) editProfileModal.style.display = 'none';
-            
-            // Show success notification
-            notifications.success('Profile Updated', 'Your profile has been updated successfully');
-        } else {
-            notifications.error('Update Failed', 'Failed to update profile. Please try again.');
-        }
-    } catch (error) {
-        console.error('Error updating profile:', error);
-        notifications.error('Update Failed', 'An error occurred while updating your profile');
-    }
-}
-
-// Handle profile picture upload
-async function uploadProfilePicture() {
-    try {
-        const fileInput = document.getElementById('profilePicFile');
-        const file = fileInput.files[0];
-        
-        if (!file) {
-            notifications.error('No File Selected', 'Please select an image file to upload');
-            return;
-        }
-        
-        // Validate file type
-        if (!file.type.match(/image\/(jpeg|jpg|png|gif)/i)) {
-            notifications.error('Invalid File', 'Please select a valid image file (JPG, PNG, or GIF)');
-            return;
-        }
-        
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            notifications.error('File Too Large', 'The image must be smaller than 5MB');
-            return;
-        }
-        
-        // Upload the file
-        const success = await profileManager.updateProfilePicture(file);
-        
-        if (success) {
-            // Close the modal
-            const uploadPicModal = document.getElementById('uploadPicModal');
-            if (uploadPicModal) {
-                uploadPicModal.style.display = 'none';
-            }
-            
-            // Show success message
-            notifications.success('Success', 'Profile picture updated successfully');
-        }
-    } catch (error) {
-        console.error('Error uploading profile picture:', error);
-        notifications.error('Upload Failed', 'Failed to upload profile picture. Please try again.');
-    } finally {
-        // Reset the upload button state
-        const uploadButton = document.getElementById('uploadPicButton');
-        if (uploadButton) {
-            uploadButton.disabled = false;
-            uploadButton.innerHTML = '<i class="bi bi-cloud-upload"></i> Upload';
-            uploadButton.classList.remove('loading');
-        }
-    }
-}
-
-// Add image preview functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const fileInput = document.getElementById('profilePicFile');
-    const previewContainer = document.getElementById('imagePreview');
-    
-    if (fileInput && previewContainer) {
-        fileInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const previewImg = previewContainer.querySelector('img');
-                    if (previewImg) {
-                        previewImg.src = e.target.result;
-                    }
-                };
-                
-                reader.readAsDataURL(this.files[0]);
-            }
-        });
-    }
-});
-
-async function changePassword() {
-    try {
-        const username = localStorage.getItem('username');
-        const currentPassword = document.getElementById('currentPassword').value;
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-
-        // Validate passwords match
-        if (newPassword !== confirmPassword) {
-            notifications.error('Error', 'New passwords do not match');
-            return;
-        }
-
-        // Validate password length
-        if (newPassword.length < 8) {
-            notifications.error('Error', 'New password must be at least 8 characters long');
-            return;
-        }
-
-        const response = await fetch('/change-password', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                username,
-                currentPassword,
-                newPassword
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            notifications.success('Success', 'Password changed successfully');
-            // Close modal and reset form
-            document.getElementById('changePasswordModal').style.display = 'none';
-            document.getElementById('changePasswordForm').reset();
-        } else {
-            notifications.error('Error', data.error || 'Failed to change password');
-        }
-    } catch (error) {
-        console.error('Error changing password:', error);
-        notifications.error('Error', 'Failed to change password');
-    }
-} 

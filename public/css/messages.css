@@ -1085,4 +1085,90 @@
     .message-own .message-text {
         padding-right: 18px; /* Smaller space for read indicator on mobile */
     }
+}
+
+/* Add emoji picker styling */
+.emoji-picker-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 420px;
+    background: rgba(20, 20, 28, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(242, 24, 217, 0.3);
+    overflow: hidden;
+}
+
+.emoji-tabs {
+    display: flex;
+    overflow-x: auto;
+    padding: 8px;
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.emoji-tab {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 6px 10px;
+    margin-right: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+.emoji-tab:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.emoji-tab.active {
+    background: rgba(242, 24, 217, 0.2);
+}
+
+.emoji-grid-container {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 5px;
+    padding: 10px;
+    overflow-y: auto;
+    height: 350px;
+    background: transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.emoji-button {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoji-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.2);
+}
+
+.emoji-picker {
+    position: fixed;
+    z-index: 9999;
+    width: 400px;
+    height: 450px;
+    display: none;
 } 

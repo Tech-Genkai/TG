@@ -273,6 +273,37 @@ function setActivePage() {
     }
 }
 
+// Function to update unread message badges in navbar and sidebar for all pages
+function updateGlobalUnreadBadges() {
+    // Get the unread count from localStorage, set by private-messages.js
+    const unreadCount = parseInt(localStorage.getItem('unreadMessageCount')) || 0;
+    
+    if (unreadCount > 0) {
+        console.log('Updating global unread badges:', unreadCount);
+        
+        // No longer adding badge to navbar message icon
+        
+        // Find the message link in sidebar
+        const sidebarMessageIcon = document.querySelector('.sidebar a[title="Messages"]') || 
+                                document.querySelector('.sidebar a[href="/messages"]');
+        
+        if (sidebarMessageIcon) {
+            // Remove existing badge if present
+            const existingBadge = sidebarMessageIcon.querySelector('.message-badge');
+            if (existingBadge) {
+                existingBadge.remove();
+            }
+            
+            // Create and add the badge
+            const badge = document.createElement('div');
+            badge.className = 'message-badge';
+            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+            sidebarMessageIcon.style.position = 'relative';
+            sidebarMessageIcon.appendChild(badge);
+        }
+    }
+}
+
 // Initialize search functionality
 function initializeSearch() {
     const searchBar = document.querySelector('.search-bar input');
@@ -418,19 +449,78 @@ function setupHeaders() {
     };
 }
 
-// Initialize when DOM is loaded
+// Function to initialize global Socket.io connection for online status tracking
+function initializeGlobalSocket() {
+    // Skip if we're on login/registration pages
+    const currentPath = window.location.pathname;
+    const isAuthPage = ['/login', '/signup', '/register', '/account-switch'].includes(currentPath);
+    if (isAuthPage) return;
+    
+    const username = localStorage.getItem('username');
+    if (!username) return;
+    
+    console.log('Initializing global Socket.io connection for online status');
+    
+    // Check if socket already exists (might be initialized by another page)
+    if (window.globalSocket) return;
+    
+    try {
+        // Connect to Socket.io with authentication
+        window.globalSocket = io({
+            auth: {
+                username: username
+            },
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            reconnectionAttempts: Infinity
+        });
+        
+        // Set up event handlers
+        window.globalSocket.on('connect', () => {
+            console.log('Global socket connected');
+        });
+        
+        window.globalSocket.on('connect_error', (err) => {
+            console.error('Global socket connection error:', err.message);
+        });
+        
+        // Start sending heartbeats every minute to keep online status
+        setInterval(() => {
+            if (window.globalSocket && window.globalSocket.connected) {
+                window.globalSocket.emit('heartbeat');
+                console.log('Sent heartbeat to maintain online status');
+            }
+        }, 60 * 1000); // every minute
+    } catch (err) {
+        console.error('Error initializing global socket:', err);
+    }
+}
+
+// Wait for DOM to be ready, then initialize
 document.addEventListener('DOMContentLoaded', function() {
-    // Check login status - this will redirect if needed
-    if (!checkLoginStatus()) return;
+    // Only proceed if the user is logged in
+    if (isLoggedIn()) {
+        if (!isRegistrationPending()) {
+            // Initialize search functionality
+            initializeSearch();
+            
+            // Set up headers with user info
+            setupHeaders();
+            
+            // Set active page in navigation
+            setActivePage();
+            
+            // Update unread message badges
+            updateGlobalUnreadBadges();
+            
+            // Initialize global Socket.io connection for online status tracking across all pages
+            initializeGlobalSocket();
+        }
+    }
     
-    // Setup headers for API requests
-    setupHeaders();
-    
-    // Set active page in navigation
-    setActivePage();
-    
-    // Initialize search if present
-    initializeSearch();
+    // Initialize unread badge update periodically
+    setInterval(updateGlobalUnreadBadges, 30000); // Check every 30 seconds
 });
 
 // Add event listener for page visibility changes (handles when user uses back button)

@@ -160,8 +160,10 @@ body {
     color: #fff;
     font-size: 16px;
     padding: 10px;
+    padding-right: 30px;
     border-radius: 10px;
     transition: all 0.3s ease-out;
+    position: relative;
 }
 
 .sidebar a:nth-last-child(1) {
@@ -187,6 +189,7 @@ body {
     border-radius: 50%;
     object-fit: cover;
     border: 1px solid #ffffff80;
+    aspect-ratio: 1/1;
 }
 
 .sidebar a:hover {
@@ -304,6 +307,7 @@ body {
     .sidebar a {
         justify-content: center;
         padding: 8px;
+        padding-right: 8px;
         font-size: 0;        
         width: 30px;
     }
@@ -325,6 +329,13 @@ body {
 
     .message {
         max-width: 85%;
+    }
+
+    /* Adjust sidebar badge positioning for mobile */
+    .sidebar a .message-badge {
+        right: -5px;
+        top: 0;
+        transform: none;
     }
 }
 
@@ -562,6 +573,7 @@ body {
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid var(--dragon);
+    aspect-ratio: 1/1;
 }
 
 /* Chat Styles */
@@ -1128,4 +1140,60 @@ body {
 .search-result-name {
     font-weight: bold;
     font-size: 16px;
+}
+
+/* Message badge styling for both navbar and sidebar */
+.message-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #f218d9;
+    color: white;
+    font-size: 11px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #191919;
+    z-index: 3;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease;
+}
+
+/* Special styling for sidebar badge */
+.sidebar a .message-badge {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 2px;
+    font-size: 12px;
+    background-color: #f218d9;
+    min-width: 20px;
+    height: 20px;
+    padding: 0;
+    aspect-ratio: 1/1;
+}
+
+/* Remove hover effect for sidebar badge */
+.sidebar a:hover .message-badge {
+    transform: translateY(-50%);
+    box-shadow: 0 0 5px rgba(242, 24, 217, 0.7);
+}
+
+/* Mobile sidebar badge hover adjustment */
+@media (max-width: 810px) {
+    .sidebar a:hover .message-badge {
+        transform: none;
+    }
+}
+
+.nav-icons a[href="/profile"] img {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    aspect-ratio: 1/1;
 }
