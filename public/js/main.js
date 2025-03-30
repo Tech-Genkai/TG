@@ -485,6 +485,33 @@ function initializeGlobalSocket() {
             console.error('Global socket connection error:', err.message);
         });
         
+        // Listen for online status updates from other users
+        window.globalSocket.on('user status', (data) => {
+            console.log(`User status update: ${data.username} is ${data.status}`);
+            // Dispatch a custom event so other components can listen for it
+            document.dispatchEvent(new CustomEvent('user-status-update', { 
+                detail: { 
+                    username: data.username, 
+                    status: data.status 
+                } 
+            }));
+            
+            // Update UI elements with this user's status
+            updateUserStatusUI(data.username, data.status);
+        });
+        
+        // Listen for initial list of online users
+        window.globalSocket.on('online users', (usersList) => {
+            console.log('Received online users list:', usersList);
+            // Store in sessionStorage for reference
+            sessionStorage.setItem('onlineUsers', JSON.stringify(usersList));
+            
+            // Dispatch a custom event so other components can listen for it
+            document.dispatchEvent(new CustomEvent('online-users-update', { 
+                detail: { users: usersList } 
+            }));
+        });
+        
         // Start sending heartbeats every minute to keep online status
         setInterval(() => {
             if (window.globalSocket && window.globalSocket.connected) {
@@ -494,6 +521,50 @@ function initializeGlobalSocket() {
         }, 60 * 1000); // every minute
     } catch (err) {
         console.error('Error initializing global socket:', err);
+    }
+}
+
+// Function to update UI elements based on user status changes
+function updateUserStatusUI(username, status) {
+    // Update status indicators in the friends list
+    const friendCards = document.querySelectorAll(`.friend-card[data-username="${username}"]`);
+    
+    friendCards.forEach(card => {
+        // Find the status indicator
+        const statusIndicator = card.querySelector('.status-indicator');
+        const lastSeenText = card.querySelector('.last-seen');
+        
+        if (statusIndicator) {
+            // Update the indicator
+            if (status === 'online') {
+                statusIndicator.classList.remove('offline');
+                statusIndicator.classList.add('online');
+                statusIndicator.title = 'Online';
+                
+                // Remove last seen text if it exists
+                if (lastSeenText) {
+                    lastSeenText.style.display = 'none';
+                }
+            } else {
+                statusIndicator.classList.remove('online');
+                statusIndicator.classList.add('offline');
+                statusIndicator.title = 'Offline';
+                
+                // We don't have the lastSeen info here, will need to refresh to get it
+                // or implement a more sophisticated status update event
+            }
+        }
+    });
+    
+    // If we're in a private message screen with this user, update their status
+    const currentChatUser = document.querySelector('.chat-header .user-info h2')?.dataset?.username;
+    if (currentChatUser === username) {
+        const statusElement = document.querySelector('.chat-header .user-status');
+        if (statusElement) {
+            statusElement.classList.remove('online', 'offline');
+            statusElement.classList.add(status);
+            statusElement.textContent = status === 'online' ? 'Online' : 'Offline';
+        }
     }
 }
 

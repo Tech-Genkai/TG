@@ -59,6 +59,49 @@ document.addEventListener('DOMContentLoaded', function() {
             filterFriends(query);
         });
     }
+    
+    // Listen for user status updates
+    document.addEventListener('user-status-update', function(event) {
+        const { username: updatedUsername, status } = event.detail;
+        
+        // Find all friend cards with this username
+        const friendCards = document.querySelectorAll(`.friend-card[data-username="${updatedUsername}"]`);
+        if (friendCards.length === 0) return;
+        
+        friendCards.forEach(card => {
+            const statusIndicator = card.querySelector('.status-indicator');
+            const lastSeenText = card.querySelector('.last-seen');
+            
+            if (statusIndicator) {
+                // Update the status indicator class
+                statusIndicator.classList.remove('online', 'offline');
+                statusIndicator.classList.add(status);
+                statusIndicator.title = status === 'online' ? 'Online' : 'Offline';
+                
+                // Handle last seen text visibility
+                if (lastSeenText) {
+                    lastSeenText.style.display = status === 'online' ? 'none' : 'block';
+                }
+            }
+        });
+        
+        // If status changed to online, we may need to reorder the friends list
+        // The simplest approach is to reload the list
+        if (status === 'online') {
+            // Check if we're on the main friends page or viewing another user's friends
+            const urlPath = window.location.pathname;
+            const segments = urlPath.split('/');
+            
+            if (segments.length > 2 && segments[1] === 'friends') {
+                // We're viewing another user's friends
+                const targetUsername = decodeURIComponent(segments[2]);
+                loadUserFriends(targetUsername);
+            } else {
+                // Regular friends page
+                loadFriends();
+            }
+        }
+    });
 });
 
 // Initialize tab functionality
@@ -211,6 +254,30 @@ async function loadFriendRequests() {
     }
 }
 
+// Format last seen date
+function formatLastSeen(lastSeenDate) {
+    if (!lastSeenDate) return '';
+    
+    const lastSeen = new Date(lastSeenDate);
+    const now = new Date();
+    const diffSeconds = Math.floor((now - lastSeen) / 1000);
+    
+    if (diffSeconds < 60) {
+        return 'just now';
+    } else if (diffSeconds < 3600) {
+        const minutes = Math.floor(diffSeconds / 60);
+        return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else if (diffSeconds < 86400) {
+        const hours = Math.floor(diffSeconds / 3600);
+        return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else if (diffSeconds < 604800) {
+        const days = Math.floor(diffSeconds / 86400);
+        return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else {
+        return lastSeen.toLocaleDateString();
+    }
+}
+
 // Render friends list
 function renderFriendsList(friends, otherUsername = null, isAppending = false, pagination = null) {
     const friendsListElement = document.getElementById('friendsList');
@@ -253,11 +320,25 @@ function renderFriendsList(friends, otherUsername = null, isAppending = false, p
         friendCard.className = 'friend-card';
         friendCard.dataset.username = friend.username;
         
+        // Create online status indicator
+        const statusIndicator = friend.isOnline 
+            ? '<span class="status-indicator online" title="Online"></span>' 
+            : '<span class="status-indicator offline" title="Offline"></span>';
+        
+        // Create last seen text for offline users
+        const lastSeenText = !friend.isOnline && friend.lastSeen 
+            ? `<p class="last-seen">Last seen: ${formatLastSeen(friend.lastSeen)}</p>`
+            : '';
+        
         friendCard.innerHTML = `
-            <img src="${friend.profilePic || '/images/default-profile.png'}" alt="${friend.displayName}">
+            <div class="friend-avatar">
+                <img src="${friend.profilePic || '/images/default-profile.png'}" alt="${friend.displayName}">
+                ${statusIndicator}
+            </div>
             <div class="friend-info">
                 <h3>${friend.displayName}</h3>
                 <p>@${friend.username}</p>
+                ${lastSeenText}
                 <div class="friend-actions">
                     <button class="friend-btn message-btn" data-username="${friend.username}">Message</button>
                     <button class="friend-btn view-btn" data-username="${friend.username}">View Profile</button>

@@ -38,6 +38,10 @@ const LoginSchema = new mongoose.Schema({
     },
     profilePic: {
         type: String
+    },
+    lastSeen: {
+        type: Date,
+        default: Date.now
     }
 })
 

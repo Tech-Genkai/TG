@@ -36,8 +36,19 @@ function markUserOnline(username) {
 }
 
 // Function to mark a user as offline
-function markUserOffline(username) {
+async function markUserOffline(username) {
     if (onlineUsers.has(username)) {
+        // Update last seen time in database
+        try {
+            const lastSeenTime = Date.now();
+            await collection.updateOne(
+                { username },
+                { $set: { lastSeen: new Date(lastSeenTime) } }
+            );
+        } catch (error) {
+            console.error(`Failed to update lastSeen for ${username}:`, error);
+        }
+        
         onlineUsers.delete(username);
         // Broadcast user offline status to all clients
         io.emit('user status', { username, status: 'offline' });
@@ -1199,7 +1210,8 @@ app.get('/api/messages/:otherUsername', async (req, res) => {
                 username: otherUsername,
                 displayName: otherUser.displayName || otherUsername,
                 profilePic: otherUser.profilePic || '/images/default-profile.png',
-                isOnline: isOnline
+                isOnline: isOnline,
+                lastSeen: isOnline ? null : otherUser.lastSeen
             }
         });
     } catch (error) {
@@ -1435,12 +1447,27 @@ app.get('/api/friends', async (req, res) => {
             username: { $in: friendUsernames } 
         });
         
-        // Format friend data
-        const friends = friendProfiles.map(profile => ({
-            username: profile.username,
-            displayName: profile.displayName || profile.username,
-            profilePic: profile.profilePic || '/images/default-profile.png'
-        }));
+        // Format friend data with online status
+        const friends = friendProfiles.map(profile => {
+            const isOnline = isUserOnline(profile.username);
+            return {
+                username: profile.username,
+                displayName: profile.displayName || profile.username,
+                profilePic: profile.profilePic || '/images/default-profile.png',
+                isOnline: isOnline,
+                lastSeen: isOnline ? null : profile.lastSeen
+            };
+        });
+        
+        // Sort friends: online first, then by username
+        friends.sort((a, b) => {
+            // First sort by online status
+            if (a.isOnline && !b.isOnline) return -1;
+            if (!a.isOnline && b.isOnline) return 1;
+            
+            // Then sort by username/displayName alphabetically
+            return a.displayName.localeCompare(b.displayName);
+        });
         
         res.json({ 
             friends,
@@ -1671,12 +1698,27 @@ app.get('/api/friends/:username', async (req, res) => {
             username: { $in: friendUsernames } 
         });
         
-        // Format friend data
-        const friends = friendProfiles.map(profile => ({
-            username: profile.username,
-            displayName: profile.displayName || profile.username,
-            profilePic: profile.profilePic || '/images/default-profile.png'
-        }));
+        // Format friend data with online status
+        const friends = friendProfiles.map(profile => {
+            const isOnline = isUserOnline(profile.username);
+            return {
+                username: profile.username,
+                displayName: profile.displayName || profile.username,
+                profilePic: profile.profilePic || '/images/default-profile.png',
+                isOnline: isOnline,
+                lastSeen: isOnline ? null : profile.lastSeen
+            };
+        });
+        
+        // Sort friends: online first, then by username
+        friends.sort((a, b) => {
+            // First sort by online status
+            if (a.isOnline && !b.isOnline) return -1;
+            if (!a.isOnline && b.isOnline) return 1;
+            
+            // Then sort by username/displayName alphabetically
+            return a.displayName.localeCompare(b.displayName);
+        });
         
         console.log(`Sending ${friends.length} formatted friends`);
         res.json({ 
@@ -1750,6 +1792,21 @@ app.post("/upload-media", upload.single('file'), async (req, res) => {
     }
 });
 
+// Format gender for consistent display
+function formatGender(gender) {
+    if (!gender) return "Not specified";
+    
+    // Normalize to lowercase for comparison
+    const normalizedGender = gender.toLowerCase();
+    
+    if (normalizedGender === 'male') return 'Male';
+    if (normalizedGender === 'female') return 'Female';
+    if (normalizedGender === 'other') return 'Other';
+    
+    // For any other value, return as is
+    return gender;
+}
+
 // API to get user profile by username
 app.get("/api/user/:username", async(req, res) => {
     try {
@@ -1768,14 +1825,19 @@ app.get("/api/user/:username", async(req, res) => {
         const isOnline = isUserOnline(username);
 
         // Return user profile info
-        res.json({
+        const response = {
             username: user.username,
             displayName: user.displayName || user.username,
             bio: user.bio || "",
             profilePic: user.profilePic || "/images/default-profile.png",
             joinDate: user.createdAt,
-            isOnline: isOnline
-        });
+            gender: formatGender(user.gender),
+            dob: user.dateOfBirth || null,
+            isOnline: isOnline,
+            lastSeen: isOnline ? null : user.lastSeen
+        };
+        
+        res.json(response);
     } catch (error) {
         console.error('Error fetching user:', error);
         res.status(500).json({ error: "Error fetching user profile" });

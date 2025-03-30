@@ -9,6 +9,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('Messages page loaded for user:', username);
     
+    // Global variables
+    let activeConversation = null;
+    let activeUserData = null;  // Store active user data for reference
+    let lastMessageWrapper = null;
+    let lastMessageTime = null;
+    let lastMessageSender = null;
+    let isGrouping = false;
+    let onlineUsers = new Set();
+
     // Add a style tag for the no-scroll class if not already present
     if (!document.querySelector('style#private-messages-styles')) {
         const styleTag = document.createElement('style');
@@ -268,9 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const mediaUploadButton = document.getElementById('media-upload');
     const mediaInput = document.getElementById('media-input');
     
-    // Current active conversation
-    let activeConversation = null;
-
     // Add mobile conversation toggle functionality
     function setupMobileConversationToggle() {
         const chatHeader = document.getElementById('chat-header');
@@ -443,9 +449,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Track last message sender for grouping
+    // Using the global variables declared above
+    /* 
     let lastMessageSender = null;
     let lastMessageTime = null;
     let lastMessageWrapper = null;
+    */
     
     // Add auto-resize functionality to the message input
     messageInput.addEventListener('input', function() {
@@ -490,7 +499,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Track online users
-    const onlineUsers = new Set();
+    // Using the global variable declared above 
+    /* const onlineUsers = new Set(); */
 
     // Render conversations list
     function renderConversations(conversations) {
@@ -617,6 +627,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             console.log('Messages loaded:', data);
             
+            // Store user data for reference (including lastSeen)
+            activeUserData = data.user;
+            
             // Add a class to force scroll position to bottom without animation
             messagesContainer.classList.add('loading-messages-no-scroll');
             messagesContainer.classList.add('optimized-scroll');
@@ -653,9 +666,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create new status indicator
             const statusIndicator = document.createElement('div');
             statusIndicator.className = `user-status ${isOnline ? 'online' : 'offline'}`;
-            statusIndicator.innerHTML = isOnline 
-                ? '<i class="bi bi-circle-fill"></i> Online'
-                : '<i class="bi bi-circle"></i> Offline';
+            
+            if (isOnline) {
+                statusIndicator.innerHTML = '<i class="bi bi-circle-fill"></i> Online';
+            } else {
+                // Add last seen information if available
+                let lastSeenText = 'Offline';
+                if (data.user.lastSeen) {
+                    lastSeenText = 'Last seen: ' + formatLastSeen(data.user.lastSeen);
+                }
+                statusIndicator.innerHTML = `<i class="bi bi-circle"></i> ${lastSeenText}`;
+            }
+            
             statusIndicator.dataset.username = data.user.username;
             
             // Add to the chat header
@@ -931,6 +953,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Format last seen date
+    function formatLastSeen(lastSeenDate) {
+        if (!lastSeenDate) return 'unknown';
+        
+        const lastSeen = new Date(lastSeenDate);
+        const now = new Date();
+        const diffSeconds = Math.floor((now - lastSeen) / 1000);
+        
+        if (diffSeconds < 60) {
+            return 'just now';
+        } else if (diffSeconds < 3600) {
+            const minutes = Math.floor(diffSeconds / 60);
+            return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        } else if (diffSeconds < 86400) {
+            const hours = Math.floor(diffSeconds / 3600);
+            return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        } else if (diffSeconds < 604800) {
+            const days = Math.floor(diffSeconds / 86400);
+            return `${days} day${days > 1 ? 's' : ''} ago`;
+        } else {
+            return lastSeen.toLocaleDateString();
+        }
+    }
+
     // Function to update online status indicators in UI
     function updateOnlineStatusInUI(specificUsername = null) {
         // Update conversation list items
@@ -966,9 +1012,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (statusIndicator) {
                 const isOnline = onlineUsers.has(activeConversation);
                 statusIndicator.className = `user-status ${isOnline ? 'online' : 'offline'}`;
-                statusIndicator.innerHTML = isOnline 
-                    ? '<i class="bi bi-circle-fill"></i> Online'
-                    : '<i class="bi bi-circle"></i> Offline';
+                
+                if (isOnline) {
+                    statusIndicator.innerHTML = '<i class="bi bi-circle-fill"></i> Online';
+                } else {
+                    // Try to get last seen time from the user data
+                    let lastSeenText = 'Offline';
+                    const lastSeenData = activeUserData?.lastSeen;
+                    
+                    if (lastSeenData) {
+                        lastSeenText = 'Last seen: ' + formatLastSeen(lastSeenData);
+                    }
+                    
+                    statusIndicator.innerHTML = `<i class="bi bi-circle"></i> ${lastSeenText}`;
+                }
             }
         }
     }
