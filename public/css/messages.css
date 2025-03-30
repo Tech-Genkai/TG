@@ -228,7 +228,7 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 15px;
+    padding: 15px 15px 30px 15px;
     display: flex;
     flex-direction: column;
     background-color: rgba(15, 15, 22, 0.3);
@@ -238,6 +238,30 @@
     padding-right: 4px;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+}
+
+/* Disable smooth scrolling when loading messages to avoid scroll animation */
+.loading-messages-no-scroll {
+    scroll-behavior: auto !important;
+}
+
+/* Add more space at the top to ensure content doesn't start right at the top */
+.chat-messages::before {
+    content: '';
+    padding-top: 10px;
+    display: block;
+}
+
+/* Add more space at the bottom to ensure more room for the last message */
+.chat-messages::after {
+    content: '';
+    padding-bottom: 20px;
+    display: block;
+}
+
+/* Make sure message container has proper spacing */
+.message-container:last-child {
+    margin-bottom: 15px;
 }
 
 /* Empty state styling */
@@ -441,6 +465,7 @@
     border-radius: 5px;
     float: right;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
 }
 
 .consecutive-message {
@@ -1014,5 +1039,50 @@
     
     .emoji-btn, .media-btn {
         margin-right: 3px;
+    }
+}
+
+/* Read receipt styling */
+.read-indicator {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0;
+    font-size: 0.8rem;
+    color: rgba(0, 255, 255, 0.8);
+    opacity: 0.9;
+    position: absolute;
+    right: 6px;
+    bottom: 2px;
+}
+
+.read-indicator i {
+    font-size: 1rem;
+}
+
+.consecutive-message .read-indicator {
+    right: 4px;
+    bottom: 2px;
+}
+
+/* Make sure our text has space for the read indicator */
+.message-own .message-text {
+    padding-right: 22px; /* Add space for read indicator */
+    display: inline-block; /* Ensure the text takes up space */
+}
+
+/* Responsive styles for read indicators */
+@media (max-width: 480px) {
+    .read-indicator {
+        font-size: 0.7rem;
+        right: 4px;
+        bottom: 1px;
+    }
+    
+    .read-indicator i {
+        font-size: 0.9rem;
+    }
+    
+    .message-own .message-text {
+        padding-right: 18px; /* Smaller space for read indicator on mobile */
     }
 } 

@@ -9,6 +9,139 @@ document.addEventListener('DOMContentLoaded', function() {
 
     console.log('Messages page loaded for user:', username);
     
+    // Add a style tag for the no-scroll class if not already present
+    if (!document.querySelector('style#private-messages-styles')) {
+        const styleTag = document.createElement('style');
+        styleTag.id = 'private-messages-styles';
+        styleTag.textContent = `
+            .loading-messages-no-scroll {
+                scroll-behavior: auto !important;
+                overflow-anchor: none !important;
+            }
+            
+            /* Stabilize message containers during scrolling */
+            .message-container {
+                transform: translateZ(0);
+                will-change: transform;
+                contain: layout style paint;
+            }
+            
+            /* Prevent individual elements from flying around */
+            .message-wrapper, .message-profile-pic, .message-content, 
+            .message, .message-text {
+                will-change: transform;
+                transform: translateZ(0);
+                transition: none !important;
+            }
+            
+            /* Smoother media animations */
+            .message-media img, .message-media video {
+                contain: layout style paint;
+                will-change: transform;
+            }
+            
+            /* Prevent layout shifts during scrolling */
+            #messages {
+                contain: layout style;
+                position: relative;
+            }
+            
+            /* Force GPU acceleration for smoother scrolling */
+            #messages.smooth-scroll {
+                scroll-behavior: smooth;
+            }
+            
+            #messages.no-smooth-scroll {
+                scroll-behavior: auto;
+            }
+            
+            /* Improved read indicator styling */
+            .read-indicator {
+                display: inline-flex;
+                align-items: center;
+                color: rgba(0, 255, 255, 0.8);
+                opacity: 0.9;
+                position: absolute;
+                right: 6px;
+                bottom: 2px;
+                font-size: 0.8rem;
+            }
+            
+            /* Special positioning for short messages */
+            .read-wrapper {
+                display: inline-flex;
+                margin-left: 4px;
+                margin-right: 0;
+                position: relative;
+                vertical-align: middle;
+                height: 100%;
+                align-items: center;
+            }
+            
+            .read-indicator.after-message {
+                position: relative;
+                right: auto;
+                bottom: auto;
+                margin-left: 0;
+                margin-right: 0;
+                vertical-align: middle;
+                line-height: 1;
+                padding: 0 2px;
+            }
+            
+            /* For better alignment in short messages */
+            .read-indicator.after-message i {
+                font-size: 12px;
+                line-height: 1;
+            }
+            
+            /* Make space for read indicators */
+            .message-own:not(.short-message) .message-text {
+                padding-right: 22px;
+                display: inline-block;
+            }
+            
+            /* For short messages, use consistent sizing and prevent overflow */
+            .message.short-message {
+                display: inline-flex;
+                align-items: center;
+                padding: 6px 12px;
+                white-space: nowrap;
+                flex-direction: row;
+                justify-content: flex-end;
+                max-width: fit-content;
+                min-width: 40px;
+                border-radius: 5px !important;
+                box-sizing: border-box;
+                margin: 2px 0;
+            }
+            
+            /* Apply consistent styling to both own and other short messages */
+            .message-own.short-message,
+            .message-other.short-message {
+                border-radius: 5px !important;
+            }
+            
+            .message.short-message .message-text {
+                padding-right: 0;
+                order: 1;
+            }
+            
+            .message.short-message .read-wrapper {
+                order: 2;
+            }
+            
+            /* For consecutive short messages with read receipts */
+            .message.short-message.consecutive-message {
+                display: inline-flex;
+                align-items: center;
+                justify-content: flex-end;
+                margin-top: 2px;
+            }
+        `;
+        document.head.appendChild(styleTag);
+    }
+    
     // Function to highlight the messages link in sidebar
     function highlightMessagesInSidebar() {
         // Remove active class from all sidebar links
@@ -321,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Open a conversation
+    // Open a conversation with improved loading and animation
     function openConversation(withUsername) {
         console.log('Opening conversation with:', withUsername);
         activeConversation = withUsername;
@@ -349,6 +482,10 @@ document.addEventListener('DOMContentLoaded', function() {
         lastMessageSender = null;
         lastMessageTime = null;
         lastMessageWrapper = null;
+        
+        // Force no-smooth scrolling during load
+        messagesContainer.classList.add('loading-messages-no-scroll');
+        messagesContainer.classList.add('optimized-scroll');
         
         // Clear messages container
         messagesContainer.innerHTML = '';
@@ -378,8 +515,21 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             console.log('Messages loaded:', data);
             
+            // Add a class to force scroll position to bottom without animation
+            messagesContainer.classList.add('loading-messages-no-scroll');
+            messagesContainer.classList.add('optimized-scroll');
+            
             // Clear loading indicator
             messagesContainer.innerHTML = '';
+            
+            // Create a div for messages that will be initially hidden
+            const messagesWrapper = document.createElement('div');
+            messagesWrapper.style.opacity = '0';
+            messagesWrapper.style.visibility = 'hidden';
+            messagesWrapper.style.transition = 'opacity 0.2s ease-out';
+            messagesWrapper.style.willChange = 'opacity, transform';
+            messagesWrapper.style.transform = 'translateZ(0)';
+            messagesContainer.appendChild(messagesWrapper);
             
             // Update user info in header
             userNameElement.textContent = data.user.displayName;
@@ -391,8 +541,49 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Render messages
             if (data.messages && data.messages.length > 0) {
+                // Store original parent to restore later
+                const originalMessagesContainer = messagesContainer;
+                
+                // Use the temporary container for adding messages
+                const tempContainer = messagesWrapper;
+                
+                // Add all messages to the temporary container
                 data.messages.forEach(msg => {
-                    addMessage(msg);
+                    addMessage(msg, tempContainer);
+                });
+                
+                // Position at bottom immediately before showing messages
+                requestAnimationFrame(() => {
+                    // Add extra padding at the bottom to ensure full visibility of last message
+                    const lastMessageEl = tempContainer.querySelector('.message-container:last-child, .system-message:last-child');
+                    if (lastMessageEl) {
+                        const paddingEl = document.createElement('div');
+                        paddingEl.style.height = '50px'; // Extra padding at bottom
+                        paddingEl.style.display = 'block';
+                        tempContainer.appendChild(paddingEl);
+                    }
+                    
+                    // Force scroll to bottom before display
+                    originalMessagesContainer.scrollTop = originalMessagesContainer.scrollHeight + 8000;
+                    
+                    // Now show messages with a slight delay
+                    setTimeout(() => {
+                        // Make the container visible
+                        messagesWrapper.style.opacity = '1';
+                        messagesWrapper.style.visibility = 'visible';
+                        
+                        // Keep optimal performance during reveal
+                        setTimeout(() => {
+                            // One more scroll to ensure we're at the bottom
+                            originalMessagesContainer.scrollTop = originalMessagesContainer.scrollHeight + 8000;
+                            
+                            // Finally remove the performance classes
+                            setTimeout(() => {
+                                originalMessagesContainer.classList.remove('loading-messages-no-scroll');
+                                originalMessagesContainer.classList.remove('optimized-scroll');
+                            }, 250);
+                        }, 50);
+                    }, 30);
                 });
             }
             
@@ -409,6 +600,45 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('retry-conversation')?.addEventListener('click', () => {
                 openConversation(withUsername);
             });
+        });
+    }
+    
+    // Scroll to bottom of messages container with improved reliability
+    function scrollToBottom(smooth = true) {
+        // Temporarily add a class to optimize rendering during scrolling
+        messagesContainer.classList.add('optimized-scroll');
+        
+        // If smooth is false, disable smooth scrolling
+        if (!smooth) {
+            messagesContainer.classList.add('no-smooth-scroll');
+            messagesContainer.classList.remove('smooth-scroll');
+        } else {
+            messagesContainer.classList.add('smooth-scroll');
+            messagesContainer.classList.remove('no-smooth-scroll');
+        }
+        
+        // Use a large value to ensure we scroll past the last message
+        const targetScrollTop = messagesContainer.scrollHeight + 8000;
+        
+        // First scroll attempt - immediate
+        messagesContainer.scrollTop = targetScrollTop;
+        
+        // Second scroll attempt - after frame render
+        requestAnimationFrame(() => {
+            messagesContainer.scrollTop = targetScrollTop;
+            
+            // Third scroll attempt - with slight delay to handle layout shifts
+            setTimeout(() => {
+                messagesContainer.scrollTop = targetScrollTop;
+                
+                // Remove performance optimization classes after scrolling is done
+                setTimeout(() => {
+                    if (!smooth) {
+                        messagesContainer.classList.remove('no-smooth-scroll');
+                    }
+                    messagesContainer.classList.remove('optimized-scroll');
+                }, 100);
+            }, 30);
         });
     }
     
@@ -429,6 +659,9 @@ document.addEventListener('DOMContentLoaded', function() {
             messageInput.style.height = 'auto';
             // Focus on input field
             messageInput.focus();
+            
+            // Ensure we scroll to bottom after sending a message (without animation)
+            scrollToBottom(false);
         }
     }
     
@@ -448,7 +681,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Received private message:', msg);
         // If this message is part of the active conversation, add it to the chat
         if (activeConversation === (msg.isSelf ? msg.recipient : msg.sender)) {
-            addMessage(msg);
+            // Use smooth scrolling for incoming messages, immediate for outgoing
+            addMessage(msg, false);
             
             // If the message is from the other user, mark as read
             if (!msg.isSelf) {
@@ -475,18 +709,103 @@ document.addEventListener('DOMContentLoaded', function() {
         notifications.error('Error', err.message || 'An error occurred');
     });
     
+    // Handle messages read events
+    socket.on('messages read', (data) => {
+        console.log('Messages read by:', data.by, 'count:', data.count);
+        // Find all messages sent by current user to the reader and mark them as read
+        if (activeConversation === data.by) {
+            updateMessageReadStatus(data.by);
+        }
+    });
+    
+    // Function to update read status of messages
+    function updateMessageReadStatus(reader) {
+        // Get all message elements in the current conversation that are our own 
+        // and don't already have a read indicator
+        const messageElements = messagesContainer.querySelectorAll('.message.message-own:not(.read)');
+        
+        messageElements.forEach(messageEl => {
+            // Skip if already has read indicator
+            if (messageEl.querySelector('.read-indicator')) {
+                return;
+            }
+            
+            // Mark the message as read in the UI
+            messageEl.classList.add('read');
+            
+            // Check if this is a short message
+            const isShort = messageEl.classList.contains('short-message');
+            
+            // Add read indicator based on message type
+            const textSpan = messageEl.querySelector('.message-text');
+            
+            if (isShort) {
+                // For short messages, append after the message
+                const readIndicator = document.createElement('span');
+                readIndicator.className = 'read-indicator after-message';
+                readIndicator.title = 'Read';
+                readIndicator.innerHTML = '<i class="bi bi-check2-all"></i>';
+                
+                const readWrapper = document.createElement('div');
+                readWrapper.className = 'read-wrapper';
+                readWrapper.appendChild(readIndicator);
+                
+                // Ensure the message element uses flexbox to position elements
+                messageEl.style.display = 'inline-flex';
+                messageEl.style.alignItems = 'center';
+                messageEl.style.justifyContent = 'flex-end';
+                
+                // Set correct order for text and read indicator
+                if (textSpan) textSpan.style.order = '1';
+                readWrapper.style.order = '2';
+                
+                messageEl.appendChild(readWrapper);
+            } else if (messageEl.classList.contains('consecutive-message') && textSpan) {
+                // For consecutive messages, append to the element itself
+                const readIndicator = document.createElement('span');
+                readIndicator.className = 'read-indicator';
+                readIndicator.title = 'Read';
+                readIndicator.innerHTML = '<i class="bi bi-check2-all"></i>';
+                messageEl.appendChild(readIndicator);
+            } else {
+                // For regular messages, append to the element itself
+                const readIndicator = document.createElement('span');
+                readIndicator.className = 'read-indicator';
+                readIndicator.title = 'Read';
+                readIndicator.innerHTML = '<i class="bi bi-check2-all"></i>';
+                messageEl.appendChild(readIndicator);
+            }
+        });
+    }
+    
     // Add a message to the chat
-    function addMessage(msg) {
+    function addMessage(msg, targetContainer = null) {
         const currentSender = msg.isSelf ? username : msg.sender;
         const currentTime = msg.timestamp;
         const isOwnMessage = msg.isSelf;
         const messageText = msg.text;
         
+        // Use the provided container or the default messagesContainer
+        const container = targetContainer || messagesContainer;
+        
+        // Create document fragment for better DOM performance
+        const fragment = document.createDocumentFragment();
+        
         // Check if this message should be grouped with the previous one
-        if (shouldGroupMessages(currentSender, currentTime)) {
+        if (shouldGroupMessages(currentSender, currentTime) && lastMessageWrapper) {
             const messageElement = document.createElement('div');
             messageElement.className = 'message ' + 
                 (isOwnMessage ? 'message-own' : 'message-other') + ' consecutive-message';
+            
+            // Add 'read' class if the message has been read
+            if (isOwnMessage && msg.read) {
+                messageElement.classList.add('read');
+            }
+            
+            // Check if message is short to apply special styling
+            if (isShortMessage(messageText)) {
+                messageElement.classList.add('short-message');
+            }
             
             const textSpan = document.createElement('span');
             textSpan.className = 'message-text';
@@ -506,13 +825,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 textSpan.appendChild(textNode);
             }
             
+            // Add read indicator for own messages that have been read
+            if (isOwnMessage && msg.read) {
+                addReadIndicator(messageElement, textSpan, isShortMessage(messageText));
+            }
+            
             messageElement.appendChild(textSpan);
             
             const messageContent = lastMessageWrapper.querySelector('.message-content');
             messageContent.appendChild(messageElement);
             
             lastMessageTime = currentTime;
-            scrollToBottom();
+            
+            // Only scroll if we're using the main container (not a temporary one)
+            if (!targetContainer) {
+                scrollToBottom();
+            }
             return;
         }
         
@@ -535,6 +863,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ? (document.getElementById('navProfilePic').src) 
             : (msg.senderProfilePic || '/images/default-profile.png');
         profileImg.alt = isOwnMessage ? 'You' : (msg.senderDisplayName || msg.sender);
+        profileImg.loading = 'lazy'; // Add lazy loading for better performance
         
         profilePicLink.appendChild(profileImg);
         profilePic.appendChild(profilePicLink);
@@ -578,6 +907,16 @@ document.addEventListener('DOMContentLoaded', function() {
         messageElement.className = 'message ' + 
             (isOwnMessage ? 'message-own' : 'message-other');
         
+        // Add 'read' class if the message has been read
+        if (isOwnMessage && msg.read) {
+            messageElement.classList.add('read');
+        }
+        
+        // Check if message is short to apply special styling
+        if (isShortMessage(messageText)) {
+            messageElement.classList.add('short-message');
+        }
+        
         const textSpan = document.createElement('span');
         textSpan.className = 'message-text';
         
@@ -596,20 +935,77 @@ document.addEventListener('DOMContentLoaded', function() {
             textSpan.appendChild(textNode);
         }
         
+        // Add read indicator for own messages that have been read
+        if (isOwnMessage && msg.read) {
+            addReadIndicator(messageElement, textSpan, isShortMessage(messageText));
+        }
+        
         messageElement.appendChild(textSpan);
+        
         messageContent.appendChild(messageElement);
         
         messageWrapper.appendChild(profilePic);
         messageWrapper.appendChild(messageContent);
         
         messageContainer.appendChild(messageWrapper);
-        messagesContainer.appendChild(messageContainer);
+        
+        // Use fragment for better performance
+        fragment.appendChild(messageContainer);
+        container.appendChild(fragment);
         
         lastMessageSender = currentSender;
         lastMessageTime = currentTime;
         lastMessageWrapper = messageWrapper;
         
-        scrollToBottom();
+        // Only scroll if we're using the main container (not a temporary one)
+        if (!targetContainer) {
+            scrollToBottom();
+        }
+    }
+    
+    // Check if message is short (for special styling)
+    function isShortMessage(messageText) {
+        // If empty or very short text, definitely a short message
+        if (!messageText || !messageText.trim()) return true;
+        
+        // Normalize the text to handle emojis and other characters
+        const normalizedText = messageText.trim();
+        
+        // Check character count - using a consistent measure for all messages
+        return normalizedText.length <= 30;
+    }
+    
+    // Helper function to add read indicators based on message length
+    function addReadIndicator(messageElement, textSpan, isShort) {
+        const readIndicator = document.createElement('span');
+        readIndicator.className = 'read-indicator';
+        readIndicator.title = 'Read';
+        
+        // Different styling for short vs long messages
+        if (isShort) {
+            readIndicator.className += ' after-message';
+            readIndicator.innerHTML = '<i class="bi bi-check2-all"></i>';
+            
+            // For short messages, append after the message instead of overlaying
+            const readWrapper = document.createElement('div');
+            readWrapper.className = 'read-wrapper';
+            readWrapper.appendChild(readIndicator);
+            
+            // Ensure the message element uses flexbox to position elements
+            messageElement.style.display = 'inline-flex';
+            messageElement.style.alignItems = 'center';
+            messageElement.style.justifyContent = 'flex-end';
+            
+            // Set correct order for text and read indicator
+            if (textSpan) textSpan.style.order = '1';
+            readWrapper.style.order = '2';
+            
+            messageElement.appendChild(readWrapper);
+        } else {
+            // For longer messages, use the original overlay approach
+            readIndicator.innerHTML = '<i class="bi bi-check2-all"></i>';
+            messageElement.appendChild(readIndicator);
+        }
     }
     
     // Check if messages should be grouped
@@ -635,17 +1031,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return sanitizeWithEmoticonsAndLineBreaks(text);
     }
 
-    // Function to create media element
+    // Function to create media element with improved performance
     function createMediaElement(media) {
         // Check if media object is valid and has a URL
         if (!media || typeof media !== 'object' || !media.url) {
-            // Remove console warning that's causing log spam
-            // Return an empty div instead of logging an error
             return document.createElement('div');
         }
 
         const mediaContainer = document.createElement('div');
         mediaContainer.className = 'message-media';
+        mediaContainer.style.transform = 'translateZ(0)'; // Hardware acceleration
+        mediaContainer.style.willChange = 'transform'; // Indicate to browser optimization
         
         let mediaElement;
         
@@ -658,11 +1054,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 mediaElement = document.createElement('img');
                 mediaElement.src = media.url;
                 mediaElement.alt = 'Shared image';
+                mediaElement.loading = 'lazy'; // Add lazy loading
+                
+                // Add width/height to prevent layout shifts
+                mediaElement.style.width = '100%';
+                mediaElement.style.maxHeight = '300px';
+                mediaElement.style.objectFit = 'contain';
             } else if (isVideo) {
                 mediaElement = document.createElement('video');
                 mediaElement.src = media.url;
                 mediaElement.controls = true;
                 mediaElement.playsInline = true;
+                mediaElement.preload = 'metadata'; // Just load metadata initially
+                
+                // Add width/height to prevent layout shifts
+                mediaElement.style.width = '100%';
+                mediaElement.style.maxHeight = '300px';
             } else {
                 // For unknown types, create a link
                 mediaElement = document.createElement('a');
@@ -680,11 +1087,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 mediaElement = document.createElement('img');
                 mediaElement.src = media.url;
                 mediaElement.alt = 'Shared image';
+                mediaElement.loading = 'lazy'; // Add lazy loading
+                
+                // Add width/height to prevent layout shifts
+                mediaElement.style.width = '100%';
+                mediaElement.style.maxHeight = '300px';
+                mediaElement.style.objectFit = 'contain';
             } else if (url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.ogg')) {
                 mediaElement = document.createElement('video');
                 mediaElement.src = media.url;
                 mediaElement.controls = true;
                 mediaElement.playsInline = true;
+                mediaElement.preload = 'metadata'; // Just load metadata initially
+                
+                // Add width/height to prevent layout shifts
+                mediaElement.style.width = '100%';
+                mediaElement.style.maxHeight = '300px';
             } else {
                 // For unknown extensions, create a link
                 mediaElement = document.createElement('a');
@@ -696,12 +1114,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Create media overlay
+        // Apply performance optimizations to media elements
+        mediaElement.style.transform = 'translateZ(0)';
+        mediaElement.style.willChange = 'transform';
+        
+        // Create media overlay with performance optimizations
         const overlay = document.createElement('div');
         overlay.className = 'media-overlay';
+        overlay.style.opacity = '0';
+        overlay.style.visibility = 'hidden';
+        overlay.style.position = 'fixed';
         
         const overlayContent = document.createElement('div');
         overlayContent.className = 'media-overlay-content';
+        overlayContent.style.transform = 'translateZ(0)';
         
         // Create a new media element for the overlay instead of cloning
         let overlayMediaElement;
@@ -709,11 +1135,13 @@ document.addEventListener('DOMContentLoaded', function() {
             overlayMediaElement = document.createElement('img');
             overlayMediaElement.src = media.url;
             overlayMediaElement.alt = 'Full size image';
+            overlayMediaElement.loading = 'lazy';
         } else if (mediaElement.tagName === 'VIDEO') {
             overlayMediaElement = document.createElement('video');
             overlayMediaElement.src = media.url;
             overlayMediaElement.controls = true;
             overlayMediaElement.playsInline = true;
+            overlayMediaElement.preload = 'metadata';
         }
         
         if (overlayMediaElement) {
@@ -723,13 +1151,23 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add click handler to close overlay when clicking outside media content
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
-                    document.body.removeChild(overlay);
+                    overlay.style.opacity = '0';
+                    overlay.style.visibility = 'hidden';
+                    setTimeout(() => {
+                        if (overlay.parentNode) {
+                            overlay.parentNode.removeChild(overlay);
+                        }
+                    }, 200);
                 }
             });
             
             // Add click handler to show overlay when clicking on media
             mediaElement.addEventListener('click', () => {
                 document.body.appendChild(overlay);
+                // Force reflow before animating
+                overlay.offsetHeight;
+                overlay.style.opacity = '1';
+                overlay.style.visibility = 'visible';
                 if (overlayMediaElement.tagName === 'VIDEO') {
                     overlayMediaElement.play();
                 }
@@ -745,11 +1183,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
         return `${hours}:${minutes}`;
-    }
-    
-    // Scroll to bottom of messages container
-    function scrollToBottom() {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
     
     // Handle conversation search
@@ -828,4 +1261,80 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set correct title based on page
     document.title = 'Messages | Tech Genkai';
+
+    // Add a optimized scroll handler for manual scrolling
+    let isScrolling = false;
+    let scrollTimeout;
+    
+    messagesContainer.addEventListener('scroll', function() {
+        if (!isScrolling) {
+            isScrolling = true;
+            messagesContainer.classList.add('optimized-scroll');
+        }
+        
+        // Clear previous timeout
+        clearTimeout(scrollTimeout);
+        
+        // Set new timeout to remove class after scrolling stops
+        scrollTimeout = setTimeout(function() {
+            messagesContainer.classList.remove('optimized-scroll');
+            isScrolling = false;
+        }, 150);
+    });
+
+    // Add wheel event listener to prevent stutter during fast scrolling
+    messagesContainer.addEventListener('wheel', function(e) {
+        // Check if it's a fast scroll
+        if (Math.abs(e.deltaY) > 50) {
+            messagesContainer.classList.add('no-smooth-scroll');
+            
+            // Remove the class after scrolling ends
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(function() {
+                messagesContainer.classList.remove('no-smooth-scroll');
+                messagesContainer.classList.remove('optimized-scroll');
+                isScrolling = false;
+            }, 250);
+        }
+    }, { passive: true });
+
+    // Prevent touchmove events from causing stutter on mobile
+    messagesContainer.addEventListener('touchmove', function() {
+        if (!isScrolling) {
+            isScrolling = true;
+            messagesContainer.classList.add('optimized-scroll');
+            messagesContainer.classList.add('no-smooth-scroll');
+        }
+        
+        // Clear previous timeout
+        clearTimeout(scrollTimeout);
+        
+        // Set new timeout to remove class after scrolling stops
+        scrollTimeout = setTimeout(function() {
+            messagesContainer.classList.remove('optimized-scroll');
+            messagesContainer.classList.remove('no-smooth-scroll');
+            isScrolling = false;
+        }, 250);
+    }, { passive: true });
+
+    // Function to add a system message
+    function addSystemMessage(text, targetContainer = null) {
+        // Create a system message element
+        const systemMessage = document.createElement('div');
+        systemMessage.className = 'system-message';
+        
+        // Sanitize the text
+        const sanitizedText = sanitizeWithEmoticons(text);
+        
+        systemMessage.innerHTML = sanitizedText;
+        
+        // Add to the specified container or default messagesContainer
+        const container = targetContainer || messagesContainer;
+        container.appendChild(systemMessage);
+        
+        // Only scroll if we're not using a target container
+        if (!targetContainer) {
+            scrollToBottom();
+        }
+    }
 }); 

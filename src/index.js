@@ -823,6 +823,9 @@ io.on('connection', async (socket) => {
                 });
             }
         });
+        
+        // Let the client know all history messages have been sent
+        socket.emit('history complete');
     } catch (error) {
         console.error('Error sending chat history:', error);
     }
@@ -1152,6 +1155,14 @@ app.get('/api/messages/:username', async (req, res) => {
         );
         
         console.log(`Marked ${updateResult.modifiedCount} messages as read`);
+        
+        // Notify the other user that their messages were read (if any messages were marked as read)
+        if (updateResult.modifiedCount > 0) {
+            io.to(otherUser).emit('messages read', { 
+                by: currentUser,
+                count: updateResult.modifiedCount
+            });
+        }
         
         // Return messages and user profile info
         res.json({

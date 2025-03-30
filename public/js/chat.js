@@ -69,9 +69,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Store incoming messages until we're ready to display them
+    let pendingMessages = [];
+    let initialLoadComplete = false;
+
     // Handle connection
     socket.on('connect', () => {
         console.log('Connected to chat server');
+        
+        // Reset message container and add loading indicator
+        messagesContainer.innerHTML = `
+            <div class="loading-messages">
+                <div class="loading-spinner">
+                    <i class="bi bi-arrow-repeat"></i> Loading messages...
+                </div>
+            </div>
+        `;
+        
+        // Reset variables for new connection
+        pendingMessages = [];
+        initialLoadComplete = false;
+        
+        // Add a class to force scroll position to bottom without animation
+        messagesContainer.classList.add('loading-messages-no-scroll');
     });
 
     // Handle connection errors
@@ -82,6 +102,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle incoming messages
     socket.on('chat message', (msg) => {
+        // If we're still loading initial messages, store this for later
+        if (!initialLoadComplete) {
+            pendingMessages.push({type: 'chat', data: msg});
+            return;
+        }
+        
+        // Otherwise add the message immediately (normal case)
         addMessage(msg);
     });
 
@@ -101,7 +128,41 @@ document.addEventListener('DOMContentLoaded', function() {
         lastMessageTime = null;
         lastMessageWrapper = null;
         
+        // If we're still loading initial messages, store this for later
+        if (!initialLoadComplete) {
+            pendingMessages.push({type: 'system', data});
+            return;
+        }
+        
         addSystemMessage(data.text);
+    });
+
+    // Once we have all the messages, display them
+    socket.on('history complete', () => {
+        console.log(`Received ${pendingMessages.length} historical messages`);
+        
+        // Clear loading indicator
+        messagesContainer.innerHTML = '';
+        
+        // Process all pending messages
+        for (const item of pendingMessages) {
+            if (item.type === 'chat') {
+                addMessage(item.data);
+            } else if (item.type === 'system') {
+                addSystemMessage(item.data.text);
+            }
+        }
+        
+        // Mark initial load as complete
+        initialLoadComplete = true;
+        
+        // Clear the pending messages
+        pendingMessages = [];
+        
+        // Scroll to bottom without animation
+        scrollToBottom(false);
+        
+        console.log('Chat history loaded and displayed');
     });
 
     // Send message when button is clicked
@@ -153,11 +214,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to add a message to the chat
-    function addMessage(msg) {
+    function addMessage(msg, targetContainer = null) {
         const currentSender = msg.username;
         const currentTime = msg.timestamp;
         const isOwnMessage = currentSender === username;
         const messageText = msg.text || '';
+        
+        // Use the provided container or the default messagesContainer
+        const container = targetContainer || messagesContainer;
         
         // Better short message detection - catch more phrases
         const isShortMessage = messageText.length <= 30 && !messageText.includes('\n');
@@ -286,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
         messageWrapper.appendChild(messageContent);
         
         messageContainer.appendChild(messageWrapper);
-        messagesContainer.appendChild(messageContainer);
+        container.appendChild(messageContainer);
         
         lastMessageSender = currentSender;
         lastMessageTime = currentTime;
@@ -296,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to add a system message
-    function addSystemMessage(text) {
+    function addSystemMessage(text, targetContainer = null) {
         // Create a system message element
         const systemMessage = document.createElement('div');
         systemMessage.className = 'system-message';
@@ -305,10 +369,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const sanitizedText = sanitizeWithEmoticons(text);
         
         systemMessage.innerHTML = sanitizedText;
-        messagesContainer.appendChild(systemMessage);
         
-        // Scroll to bottom
-        scrollToBottom();
+        // Add to the specified container or default messagesContainer
+        (targetContainer || messagesContainer).appendChild(systemMessage);
+        
+        // Only scroll to bottom if we're not using a fragment
+        if (!targetContainer) {
+            scrollToBottom();
+        }
     }
 
     // Function to format time
@@ -319,8 +387,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Function to scroll to the bottom of messages
-    function scrollToBottom() {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    function scrollToBottom(smooth = true) {
+        if (!smooth) {
+            messagesContainer.classList.add('loading-messages-no-scroll');
+        }
+        
+        // Use requestAnimationFrame to ensure the DOM has updated
+        requestAnimationFrame(() => {
+            // Ensure we're at the very bottom by using a large value
+            messagesContainer.scrollTop = messagesContainer.scrollHeight + 1000;
+            
+            // Re-enable smooth scrolling after a short delay if it was disabled
+            if (!smooth) {
+                setTimeout(() => {
+                    messagesContainer.classList.remove('loading-messages-no-scroll');
+                }, 50);
+            }
+        });
     }
 
     // Initialize emoji picker
