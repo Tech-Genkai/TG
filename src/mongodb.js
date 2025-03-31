@@ -69,7 +69,18 @@ const MessageSchema = new mongoose.Schema({
         url: { type: String },
         type: { type: String },
         name: { type: String }
-    }
+    },
+    replyTo: {
+        messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
+        text: { type: String },
+        username: { type: String },
+        timestamp: { type: Date }
+    },
+    reactions: [{
+        emoji: { type: String, required: true },
+        username: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now }
+    }]
 })
 
 // Direct message schema for private messages
@@ -99,7 +110,18 @@ const DirectMessageSchema = new mongoose.Schema({
     media: {
         url: { type: String },
         type: { type: String }
-    }
+    },
+    replyTo: {
+        messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'DirectMessage' },
+        text: { type: String },
+        username: { type: String },
+        timestamp: { type: Date }
+    },
+    reactions: [{
+        emoji: { type: String, required: true },
+        username: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now }
+    }]
 })
 
 // Conversation schema to track message threads between users

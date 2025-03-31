@@ -871,12 +871,15 @@ io.on('connection', async (socket) => {
                 });
             } else {
                 socket.emit('chat message', {
+                    _id: msg._id, // Include the message ID
                     username: msg.username,
                     displayName: userDisplayNames.get(msg.username) || msg.username,
                     profilePic: userProfilePics.get(msg.username) || '/images/default-profile.png',
                     text: msg.text,
                     timestamp: msg.timestamp,
-                    media: msg.media || null
+                    media: msg.media || null,
+                    reactions: msg.reactions || [],
+                    replyTo: msg.replyTo || null
                 });
             }
         });
@@ -909,6 +912,16 @@ io.on('connection', async (socket) => {
                     name: msg.media.name
                 };
             }
+            
+            // Add reply data if this is a reply
+            if (msg.replyTo) {
+                messageData.replyTo = {
+                    messageId: msg.replyTo.messageId,
+                    text: msg.replyTo.text,
+                    username: msg.replyTo.username,
+                    timestamp: msg.replyTo.timestamp
+                };
+            }
 
             // Save to database
             const message = new Message(messageData);
@@ -917,9 +930,13 @@ io.on('connection', async (socket) => {
             // Add user info to the message data for broadcasting
             const broadcastData = {
                 ...messageData,
+                _id: message._id, // Include the message ID
                 displayName: socket.displayName,
                 profilePic: socket.profilePic
             };
+
+            // Log for debugging
+            console.log(`Broadcasting message with ID: ${message._id}`);
 
             // Broadcast to all clients
             io.emit('chat message', broadcastData);
@@ -931,7 +948,7 @@ io.on('connection', async (socket) => {
     
     // Handle private messages
     socket.on('private message', async (data) => {
-        const { recipient, text, media } = data;
+        const { recipient, text, media, replyTo } = data;
         
         // Allow empty text if media is present
         if (!recipient || (!text && !media)) {
@@ -943,7 +960,7 @@ io.on('connection', async (socket) => {
         const sanitizedText = text ? sanitizeText(text) : '';
         
         try {
-            console.log(`Private message from ${socket.username} to ${recipient}: "${sanitizedText.substring(0, 30)}${sanitizedText.length > 30 ? '...' : ''}"${media ? ' [with media]' : ''}`);
+            console.log(`Private message from ${socket.username} to ${recipient}: "${sanitizedText.substring(0, 30)}${sanitizedText.length > 30 ? '...' : ''}"${media ? ' [with media]' : ''}${replyTo ? ' [reply]' : ''}`);
             
             // Get recipient user
             const recipientUser = await collection.findOne({ username: recipient });
@@ -965,6 +982,16 @@ io.on('connection', async (socket) => {
                 media: media || null
             };
             
+            // Add reply data if this is a reply
+            if (replyTo) {
+                messageData.replyTo = {
+                    messageId: replyTo.messageId,
+                    text: replyTo.text,
+                    username: replyTo.username,
+                    timestamp: replyTo.timestamp
+                };
+            }
+            
             // Save to database
             const newDirectMessage = new DirectMessage({
                 sender: messageData.sender,
@@ -972,7 +999,8 @@ io.on('connection', async (socket) => {
                 text: messageData.text,
                 timestamp: messageData.timestamp,
                 read: false,
-                media: messageData.media
+                media: messageData.media,
+                replyTo: messageData.replyTo
             });
             
             await newDirectMessage.save();
@@ -1006,6 +1034,9 @@ io.on('connection', async (socket) => {
             
             // Add message ID to the message data for the client
             messageData.id = newDirectMessage._id;
+            
+            // Log for debugging
+            console.log(`Private message created with ID: ${newDirectMessage._id}`);
             
             // Emit to sender
             console.log(`Emitting private message to sender: ${socket.username}`);
@@ -1091,6 +1122,146 @@ io.on('connection', async (socket) => {
                 markUserOffline(username);
             }
         }, 5000); // 5 seconds delay
+    });
+
+    // Handle message reactions (for server chat)
+    socket.on('message reaction', async (data) => {
+        try {
+            const { messageId, emoji } = data;
+            
+            // Check for missing or invalid data
+            if (!messageId || !emoji) {
+                console.error('Invalid reaction data:', data);
+                return socket.emit('error', { message: 'Invalid reaction data. Missing messageId or emoji.' });
+            }
+            
+            // Check if messageId is valid for MongoDB ObjectId
+            if (typeof messageId !== 'string' || !messageId.match(/^[0-9a-fA-F]{24}$/)) {
+                console.error('Invalid messageId format:', messageId);
+                return socket.emit('error', { message: 'Invalid message ID format' });
+            }
+            
+            console.log(`Reaction from ${socket.username} on message ${messageId}: ${emoji}`);
+            
+            // Find the message
+            const message = await Message.findById(messageId);
+            if (!message) {
+                console.error('Message not found with ID:', messageId);
+                return socket.emit('error', { message: 'Message not found' });
+            }
+            
+            // Initialize reactions array if not exists
+            if (!message.reactions) message.reactions = [];
+            
+            // Check if user already reacted with this emoji
+            const existingReactionIndex = message.reactions.findIndex(
+                r => r.username === socket.username && r.emoji === emoji
+            );
+            
+            if (existingReactionIndex >= 0) {
+                // Remove existing reaction (toggle off)
+                message.reactions.splice(existingReactionIndex, 1);
+                console.log(`Removed reaction ${emoji} from ${socket.username} on message ${messageId}`);
+            } else {
+                // Add new reaction
+                message.reactions.push({
+                    emoji,
+                    username: socket.username,
+                    timestamp: new Date()
+                });
+                console.log(`Added reaction ${emoji} from ${socket.username} on message ${messageId}`);
+            }
+            
+            // Save updated message
+            await message.save();
+            
+            // Broadcast reaction update to all clients
+            io.emit('message reaction update', {
+                messageId: message._id,
+                reactions: message.reactions,
+                reactingUser: socket.username
+            });
+            
+        } catch (error) {
+            console.error('Error processing message reaction:', error);
+            socket.emit('error', { message: 'Error processing reaction' });
+        }
+    });
+    
+    // Handle direct message reactions
+    socket.on('private message reaction', async (data) => {
+        try {
+            const { messageId, emoji, conversationWith } = data;
+            
+            // Check for missing or invalid data
+            if (!messageId || !emoji || !conversationWith) {
+                console.error('Invalid private reaction data:', data);
+                return socket.emit('error', { message: 'Invalid reaction data. Missing messageId, emoji, or conversationWith.' });
+            }
+            
+            // Check if messageId is valid for MongoDB ObjectId
+            if (typeof messageId !== 'string' || !messageId.match(/^[0-9a-fA-F]{24}$/)) {
+                console.error('Invalid messageId format for private message:', messageId);
+                return socket.emit('error', { message: 'Invalid message ID format' });
+            }
+            
+            console.log(`Private reaction from ${socket.username} on message ${messageId}: ${emoji}`);
+            
+            // Find the message
+            const message = await DirectMessage.findById(messageId);
+            if (!message) {
+                console.error('DirectMessage not found with ID:', messageId);
+                return socket.emit('error', { message: 'Message not found' });
+            }
+            
+            // Verify the user is part of this conversation
+            if (message.sender !== socket.username && message.recipient !== socket.username) {
+                return socket.emit('error', { message: 'Not authorized to react to this message' });
+            }
+            
+            // Initialize reactions array if not exists
+            if (!message.reactions) message.reactions = [];
+            
+            // Check if user already reacted with this emoji
+            const existingReactionIndex = message.reactions.findIndex(
+                r => r.username === socket.username && r.emoji === emoji
+            );
+            
+            if (existingReactionIndex >= 0) {
+                // Remove existing reaction (toggle off)
+                message.reactions.splice(existingReactionIndex, 1);
+                console.log(`Removed private reaction ${emoji} from ${socket.username} on message ${messageId}`);
+            } else {
+                // Add new reaction
+                message.reactions.push({
+                    emoji,
+                    username: socket.username,
+                    timestamp: new Date()
+                });
+                console.log(`Added private reaction ${emoji} from ${socket.username} on message ${messageId}`);
+            }
+            
+            // Save updated message
+            await message.save();
+            
+            // Create reaction update data
+            const reactionData = {
+                messageId: message._id,
+                reactions: message.reactions,
+                reactingUser: socket.username
+            };
+            
+            // Emit to sender and recipient
+            socket.emit('private message reaction update', reactionData);
+            
+            // Determine the other participant in the conversation
+            const otherParticipant = message.sender === socket.username ? message.recipient : message.sender;
+            socket.to(otherParticipant).emit('private message reaction update', reactionData);
+            
+        } catch (error) {
+            console.error('Error processing private message reaction:', error);
+            socket.emit('error', { message: 'Error processing reaction' });
+        }
     });
 });
 
@@ -1200,7 +1371,9 @@ app.get('/api/messages/:otherUsername', async (req, res) => {
                 isSelf: isSelf,
                 read: msg.read,
                 senderDisplayName: isSelf ? null : (otherUser.displayName || otherUsername),
-                senderProfilePic: isSelf ? null : (otherUser.profilePic || '/images/default-profile.png')
+                senderProfilePic: isSelf ? null : (otherUser.profilePic || '/images/default-profile.png'),
+                replyTo: msg.replyTo || null,
+                reactions: msg.reactions || [] // Include reactions array
             };
         });
         

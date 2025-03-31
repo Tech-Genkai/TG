@@ -740,129 +740,97 @@ body {
     align-items: flex-end;
 }
 
-/* Message bubble style */
+/* Message structure overhaul */
 .message {
-    max-width: 70% !important;
+    position: relative;
     padding: 8px 12px;
     margin: 2px 0;
-    border-radius: 5px !important;
+    border-radius: 18px;
+    max-width: 70%;
     word-wrap: break-word;
-    position: relative;
-    background-color: #f0f0f0;
     box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.message .message-text {
+    width: 100% !important;
+    order: 1 !important;
+    align-self: flex-start !important;
+}
+
+.message .message-reactions {
+    width: 100% !important;
+    margin-top: 8px !important;
+    padding-top: 4px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    margin-bottom: 4px !important;
+    order: 2 !important;
+    align-self: flex-start !important;
+    display: block !important;
+}
+
+.message .message-time {
+    order: 3 !important;
+    align-self: flex-end !important;
+    display: block !important;
 }
 
 .message-own {
-    background-color: #007bff;
+    background-color: #1a1a1a;
     color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     margin-left: auto;
-    border-radius: 5px !important;
+    border-radius: 18px;
+    float: right;
+    clear: both;
 }
 
 .message-other {
-    background-color: #f0f0f0;
-    color: #333;
-    margin-right: auto;
-    border-radius: 5px !important;
-}
-
-/* Make chat bubbles transparent when they contain media */
-.message:has(.media-container) {
-    background-color: transparent !important;
-    padding: 0 !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-.message-own:has(.media-container) {
-    background-color: transparent !important;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-.media-container {
-    max-width: 300px;
-    position: relative;
-    border-radius: 8px;
-    overflow: hidden;
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-.media-container img,
-.media-container video {
-    max-width: 100%;
-    max-height: 400px;
-    object-fit: contain;
-    border-radius: 8px;
-    display: block;
-    border: none !important;
-    outline: none !important;
-}
-
-.media-actions {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    display: flex;
-    gap: 8px;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.media-container:hover .media-actions {
-    opacity: 1;
-}
-
-.media-actions button {
-    background: rgba(0, 0, 0, 0.6);
-    border: none;
+    background-color: #1a1a1a;
     color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-right: auto;
+    border-radius: 18px;
+    float: left;
+    clear: both;
+}
+
+/* Reaction styles */
+.reaction-badge {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-
-.media-actions button:hover {
-    background: rgba(0, 0, 0, 0.8);
-}
-
-/* Message text content */
-.message-text {
-    display: inline-block;
-    word-break: break-word;
-    white-space: normal;
-    text-align: left;
-}
-
-/* Improve short message display */
-.short-message .message-text {
+    background-color: rgba(50, 50, 50, 0.8);
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid rgba(100, 100, 120, 0.3);
+    margin-right: 4px;
+    margin-bottom: 3px;
     white-space: nowrap;
 }
 
-/* Consecutive message styling */
-.consecutive-message {
-    margin-top: 2px !important;
+.reaction-badge:hover {
+    background-color: rgba(80, 80, 80, 0.9);
+    border-color: rgba(242, 24, 217, 0.4);
+    transform: scale(1.05);
 }
 
-.message-own.consecutive-message {
-    border-radius: 18px;
-    border-top-right-radius: 5px;
-    border-bottom-right-radius: 5px;
+.reaction-badge.user-reacted {
+    background-color: rgba(242, 24, 217, 0.15);
+    border-color: rgba(242, 24, 217, 0.3);
 }
 
-.message-other.consecutive-message {
-    border-radius: 18px;
-    border-top-left-radius: 5px;
-    border-bottom-left-radius: 5px;
+.reaction-badge.user-reacted:hover {
+    background-color: rgba(242, 24, 217, 0.25);
+    border-color: rgba(242, 24, 217, 0.5);
+}
+
+.reaction-count {
+    font-size: 0.8em;
+    margin-left: 3px;
 }
 
 /* Message profile picture styling */
@@ -1196,4 +1164,160 @@ body {
     border-radius: 50%;
     object-fit: cover;
     aspect-ratio: 1/1;
+}
+
+/* Reaction styles */
+.message-reactions {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 4px;
+}
+
+.reaction-badge {
+    display: inline-flex;
+    align-items: center;
+    background-color: rgba(50, 50, 50, 0.8);
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid rgba(100, 100, 120, 0.3);
+    margin-right: 4px;
+    margin-bottom: 3px;
+    white-space: nowrap;
+}
+
+.reaction-badge:hover {
+    background-color: rgba(80, 80, 80, 0.9);
+    border-color: rgba(242, 24, 217, 0.4);
+    transform: scale(1.05);
+}
+
+.reaction-badge.user-reacted {
+    background-color: rgba(242, 24, 217, 0.15);
+    border-color: rgba(242, 24, 217, 0.3);
+}
+
+.reaction-badge.user-reacted:hover {
+    background-color: rgba(242, 24, 217, 0.25);
+    border-color: rgba(242, 24, 217, 0.5);
+}
+
+.reaction-count {
+    font-size: 0.8em;
+    margin-left: 3px;
+}
+
+/* Ensure reactions display properly - with !important flags */
+.message-bubble,
+.message {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    position: relative !important;
+}
+
+.message-text {
+    width: 100% !important;
+    order: 1 !important;
+    align-self: flex-start !important;
+}
+
+.message-reactions {
+    width: 100% !important;
+    margin-top: 8px !important;
+    padding-top: 4px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    margin-bottom: 4px !important;
+    order: 2 !important;
+    align-self: flex-start !important;
+    display: block !important;
+}
+
+.message-time {
+    order: 3 !important;
+    align-self: flex-end !important;
+    display: block !important;
+}
+
+/* Reply styles */
+.reply-info {
+    background-color: rgba(30, 30, 40, 0.5);
+    border-left: 3px solid rgba(242, 24, 217, 0.7);
+    padding: 4px 8px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.reply-info:hover {
+    background-color: rgba(30, 30, 40, 0.8);
+}
+
+.reply-username {
+    color: #f218d9;
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.reply-text {
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.has-reply {
+    padding-top: 10px;
+}
+
+/* Styling for reaction badges */
+.message-reactions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+    margin-bottom: 2px;
+}
+
+.reaction-badge {
+    display: inline-flex;
+    align-items: center;
+    background-color: rgba(50, 50, 50, 0.8);
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid rgba(100, 100, 120, 0.3);
+    margin-right: 4px;
+    margin-bottom: 3px;
+    white-space: nowrap;
+}
+
+.reaction-badge:hover {
+    background-color: rgba(80, 80, 80, 0.9);
+    border-color: rgba(242, 24, 217, 0.4);
+    transform: scale(1.05);
+}
+
+.reaction-badge.user-reacted {
+    background-color: rgba(242, 24, 217, 0.15);
+    border-color: rgba(242, 24, 217, 0.3);
+}
+
+.reaction-badge.user-reacted:hover {
+    background-color: rgba(242, 24, 217, 0.25);
+    border-color: rgba(242, 24, 217, 0.5);
 }

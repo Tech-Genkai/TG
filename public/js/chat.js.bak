@@ -1,5 +1,110 @@
 // Chat functionality using Socket.io
 document.addEventListener('DOMContentLoaded', function() {
+    // UI elements
+    const messagesContainer = document.getElementById('messages');
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-message');
+    const mediaUploadButton = document.getElementById('media-upload');
+    const mediaInput = document.getElementById('media-input');
+    const emojiButton = document.getElementById('emoji-button');
+    const emojiPicker = document.getElementById('emoji-picker');
+    
+    // Define global variables for grouping related messages
+    let lastMessageSender = null;
+    let lastMessageTime = null;
+    let lastMessageWrapper = null;
+    let replyToMessage = null;
+    
+    // Store pending messages during initial load
+    let pendingMessages = [];
+    
+    // Get username from localStorage
+    const username = localStorage.getItem('username');
+    if (!username) {
+        // Redirect to login if not logged in
+        window.location.href = '/login';
+    }
+    
+    // Socket.io connection
+    const socket = io({
+        auth: { 
+            username: username
+        }
+    });
+    
+    // Update reactions for a message
+    function updateReactions(messageElement, reactions) {
+        // Find or create reactions container
+        let reactionsContainer = messageElement.querySelector('.message-reactions');
+        if (!reactionsContainer) {
+            reactionsContainer = document.createElement('div');
+            reactionsContainer.className = 'message-reactions';
+            messageElement.appendChild(reactionsContainer);
+        } else {
+            // Clear existing reactions
+            reactionsContainer.innerHTML = '';
+        }
+        
+        // Group reactions by emoji
+        const emojiCounts = {};
+        reactions.forEach(reaction => {
+            if (!emojiCounts[reaction.emoji]) {
+                emojiCounts[reaction.emoji] = {
+                    count: 0,
+                    usernames: [],
+                    userReacted: false
+                };
+            }
+            emojiCounts[reaction.emoji].count++;
+            
+            const reactionUser = reaction.username || reaction.sender || 'Unknown';
+            emojiCounts[reaction.emoji].usernames.push(reactionUser);
+            
+            // Check if current user reacted
+            if (reactionUser === username) {
+                emojiCounts[reaction.emoji].userReacted = true;
+            }
+        });
+        
+        // Create badge for each emoji
+        for (const emoji in emojiCounts) {
+            const badge = document.createElement('span');
+            badge.className = 'reaction-badge';
+            
+            if (emojiCounts[emoji].userReacted) {
+                badge.classList.add('user-reacted');
+            }
+            
+            // Add emoji and count
+            badge.innerHTML = `${emoji} <span class="reaction-count">${emojiCounts[emoji].count}</span>`;
+            
+            // Add click handler for adding/removing reactions
+            badge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const messageId = messageElement.dataset.messageId;
+                const alreadyReacted = emojiCounts[emoji].userReacted;
+                
+                if (alreadyReacted) {
+                    // Remove reaction
+                    socket.emit('remove reaction', {
+                        messageId: messageId,
+                        emoji: emoji
+                    });
+                } else {
+                    // Add reaction
+                    socket.emit('add reaction', {
+                        messageId: messageId,
+                        emoji: emoji
+                    });
+                }
+            });
+            
+            reactionsContainer.appendChild(badge);
+        }
+        
+        return reactionsContainer;
+    }
+
     // Check if user is logged in
     const username = localStorage.getItem('username');
     if (!username) {
@@ -38,244 +143,9 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
     document.body.appendChild(reactionMenu);
     
-    // Add event listeners to reaction emojis
-    reactionMenu.querySelectorAll('.reaction-emoji').forEach(emoji => {
-        emoji.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const menuMessageId = reactionMenu.dataset.messageId;
-            
-            // Verify messageId is not undefined
-            if (!menuMessageId) {
-                console.error("Cannot send reaction: missing messageId");
-                if (typeof notifications !== 'undefined') {
-                    notifications.error('Error', 'Cannot react to this message');
-                }
-                closeReactionMenu();
-                return;
-            }
-            
-            console.log("Sending reaction for message ID:", menuMessageId);
-            const emojiValue = this.dataset.emoji;
-            
-            // Send the reaction to the server
-            socket.emit('message reaction', {
-                messageId: menuMessageId,
-                emoji: emojiValue
-            });
-            
-            // Close the menu
-            closeReactionMenu();
-        });
-    });
-    
     // Add CSS for reply and reaction features
     const styleTag = document.createElement('style');
     styleTag.textContent = `
-        /* Message container styles to match DM styles */
-        .message-container {
-            margin-bottom: 10px;
-            width: 100%;
-            clear: both;
-        }
-        
-        .message-wrapper {
-            display: flex;
-            max-width: 80%;
-            margin-bottom: 4px;
-        }
-        
-        .message-wrapper.own {
-            margin-left: auto;
-            flex-direction: row-reverse;
-        }
-        
-        .message-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        
-        /* Ensure messages are displayed correctly */
-        .message {
-            position: relative;
-            padding: 8px 12px;
-            margin: 2px 0;
-            max-width: fit-content;
-            word-wrap: break-word;
-            box-sizing: border-box;
-            display: flex !important;
-            flex-direction: column !important;
-            background-color: #1a1a1a;
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        }
-        
-        .message.message-own {
-            background-color: #1a1a1a;
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin-left: auto;
-            float: right;
-            clear: both;
-        }
-        
-        .message.message-other {
-            background-color: #1a1a1a;
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin-right: auto;
-            float: left;
-            clear: both;
-        }
-        
-        /* First message in a group */
-        .message-content .message:first-child {
-            border-radius: 18px 18px 18px 18px;
-        }
-        
-        .message-content .message.message-own:first-child {
-            border-radius: 18px 18px 0 18px;
-        }
-        
-        .message-content .message.message-other:first-child {
-            border-radius: 18px 18px 18px 0;
-        }
-        
-        /* Middle messages in a group */
-        .message-content .message:not(:first-child):not(:last-child) {
-            border-radius: 5px;
-        }
-        
-        .message-content .message.message-own:not(:first-child):not(:last-child) {
-            border-radius: 5px;
-        }
-        
-        .message-content .message.message-other:not(:first-child):not(:last-child) {
-            border-radius: 5px;
-        }
-        
-        /* Last message in a group */
-        .message-content .message:last-child {
-            border-radius: 5px;
-        }
-        
-        .message-content .message.message-own:last-child {
-            border-radius: 5px 5px 0 5px;
-        }
-        
-        .message-content .message.message-other:last-child {
-            border-radius: 5px 5px 5px 0;
-        }
-        
-        /* Single message (both first and last) */
-        .message-content .message:first-child:last-child {
-            border-radius: 18px;
-        }
-        
-        .message-content .message.message-own:first-child:last-child {
-            border-radius: 18px 18px 0 18px;
-        }
-        
-        .message-content .message.message-other:first-child:last-child {
-            border-radius: 18px 18px 18px 0;
-        }
-        
-        .consecutive-message {
-            margin-top: 2px;
-            clear: both;
-            border-radius: 5px !important;
-        }
-        
-        .consecutive-message.message-own {
-            border-radius: 5px 5px 0 5px !important;
-        }
-        
-        .consecutive-message.message-other {
-            border-radius: 5px 5px 5px 0 !important;
-        }
-        
-        /* Message time styling */
-        .message-time {
-            font-size: 0.75em;
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: 4px;
-            text-align: right;
-            padding-right: 4px;
-            align-self: flex-end;
-            opacity: 0.8;
-            transition: opacity 0.2s ease;
-        }
-        
-        .message:hover .message-time {
-            opacity: 1;
-        }
-        
-        .message-wrapper.own .message-time {
-            text-align: right;
-        }
-        
-        .message-wrapper:not(.own) .message-time {
-            text-align: left;
-        }
-        
-        /* Message header styling */
-        .message-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 4px;
-            font-size: 0.85em;
-            padding: 0 4px;
-        }
-        
-        .message-sender {
-            color: #f218d9;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        
-        .message-sender:hover {
-            text-decoration: underline;
-        }
-        
-        /* Message text styling */
-        .message-text {
-            line-height: 1.4;
-            white-space: pre-wrap;
-            word-break: break-word;
-            padding: 0 4px;
-        }
-        
-        /* Profile picture styling */
-        .message-profile-pic {
-            width: 32px;
-            height: 32px;
-            margin: 0 8px;
-            flex-shrink: 0;
-        }
-        
-        .message-profile-pic img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid rgba(242, 24, 217, 0.3);
-        }
-        
-        /* Online indicator styling */
-        .online-indicator {
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 10px;
-            height: 10px;
-            background-color: #4CAF50;
-            border-radius: 50%;
-            border: 2px solid #1a1a1a;
-        }
-        
-        /* Message actions styling */
         .message-actions {
             display: none;
             position: absolute;
@@ -366,7 +236,6 @@ document.addEventListener('DOMContentLoaded', function() {
             box-shadow: 0 0 8px rgba(242, 24, 217, 0.5);
         }
         
-        /* Reply container styling */
         .reply-container {
             background-color: rgba(30, 30, 40, 0.8);
             border-left: 3px solid #f218d9;
@@ -402,7 +271,6 @@ document.addEventListener('DOMContentLoaded', function() {
             font-size: 14px;
         }
         
-        /* Reaction menu styling */
         .reaction-menu {
             display: none;
             position: fixed;
@@ -439,84 +307,95 @@ document.addEventListener('DOMContentLoaded', function() {
             transform: scale(1.2);
         }
         
-        /* Reply info styling */
-        .reply-info {
-            background-color: rgba(30, 30, 40, 0.5);
-            border-left: 3px solid rgba(242, 24, 217, 0.7);
-            padding: 4px 8px;
-            margin-bottom: 6px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.85em;
+        .message-reactions {
             display: flex;
             flex-wrap: wrap;
-            align-items: center;
-            transition: background-color 0.2s;
-        }
-        
-        .reply-info:hover {
-            background-color: rgba(30, 30, 40, 0.8);
-        }
-        
-        .reply-username {
-            color: #f218d9;
-            font-weight: bold;
-        }
-        
-        .reply-text {
-            color: rgba(255, 255, 255, 0.7);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 200px;
-        }
-        
-        /* Message reactions styling */
-        .message-reactions {
-            display: inline-flex;  /* Changed from flex to inline-flex */
-            flex-wrap: nowrap;     /* Changed from wrap to nowrap */
-            gap: 4px;
             margin-top: 4px;
-            padding: 0 4px;
-            width: auto;           /* Added to prevent full width */
-            min-width: min-content; /* Added to ensure content fits */
+            gap: 4px;
         }
         
         .reaction-badge {
-            display: inline-flex;  /* Changed from flex to inline-flex */
+            display: inline-flex;
             align-items: center;
-            gap: 2px;
-            background-color: rgba(30, 30, 40, 0.6);
+            background-color: rgba(30, 30, 40, 0.8);
             border-radius: 12px;
             padding: 2px 6px;
-            font-size: 0.85em;
+            font-size: 12px;
             cursor: pointer;
             transition: all 0.2s;
-            white-space: nowrap;   /* Added to prevent wrapping */
+            border: 1px solid transparent;
         }
         
-        /* Fix consecutive message bubble shapes */
-        .message-wrapper .message:first-child {
-            border-radius: 18px !important;
+        .reaction-badge:hover {
+            background-color: rgba(242, 24, 217, 0.2);
+            border-color: rgba(242, 24, 217, 0.5);
         }
         
-        .message-wrapper .message.message-own:first-child {
-            border-radius: 18px 18px 0 18px !important;
+        .reaction-badge.user-reacted {
+            background-color: rgba(242, 24, 217, 0.25);
+            border-color: rgba(242, 24, 217, 0.5);
         }
         
-        .message-wrapper .message.message-other:first-child {
-            border-radius: 18px 18px 18px 0 !important;
+        .reaction-count {
+            margin-left: 2px;
+            font-size: 11px;
+            color: #ccc;
         }
         
-        /* Highlight animation for original message */
-        @keyframes highlight-pulse {
-            0% { background-color: rgba(242, 24, 217, 0.1); }
-            50% { background-color: rgba(242, 24, 217, 0.3); }
-            100% { background-color: rgba(242, 24, 217, 0.1); }
+        .reply-info {
+            display: flex;
+            align-items: center;
+            background-color: rgba(30, 30, 40, 0.8);
+            border-left: 3px solid #f218d9;
+            padding: 5px 8px;
+            margin-bottom: 4px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            max-width: 90%;
+        }
+        
+        .reply-avatar {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 5px;
+            display: inline-block;
+        }
+        
+        /* Message highlight animation */
+        @keyframes highlightPulse {
+            0% { background-color: rgba(242, 24, 217, 0); }
+            25% { background-color: rgba(242, 24, 217, 0.3); }
+            50% { background-color: rgba(242, 24, 217, 0.2); }
+            75% { background-color: rgba(242, 24, 217, 0.15); }
+            100% { background-color: rgba(242, 24, 217, 0); }
         }
         
         .highlight-message {
-            animation: highlight-pulse 1s ease-in-out 3;
+            animation: highlightPulse 2s ease;
+            border-radius: 8px;
+        }
+        
+        /* Position for consecutive messages */
+        .consecutive-message {
+            position: relative; /* Ensure consecutive messages have position relative */
+        }
+        
+        /* For consecutive messages, maintain the same side positioning as regular messages */
+        .consecutive-message.message-own .message-actions {
+            left: -80px;
+            right: auto;
+            top: 50%;
+            transform: translateY(-50%);
+            position: absolute;
+        }
+        
+        .consecutive-message.message-other .message-actions {
+            right: -80px;
+            left: auto;
+            top: 50%;
+            transform: translateY(-50%);
+            position: absolute;
         }
     `;
     document.head.appendChild(styleTag);
@@ -724,82 +603,33 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update message containers for this specific user
         updateOnlineStatusInMessages(data.username);
     });
-    
-    // Handle reaction updates from server
-    socket.on('message reaction update', (data) => {
-        console.log('Reaction update received:', data);
-        
-        // Find the message element by ID
-        const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
-        if (messageElement) {
-            // Update reactions UI
-            updateReactions(messageElement, data.reactions);
-        } else {
-            console.warn('Could not find message element with ID:', data.messageId);
-        }
-    });
-    
-    // Handle history complete event
+
+    // Once we have all the messages, display them
     socket.on('history complete', () => {
-        console.log('Chat history loading complete');
+        console.log(`Received ${pendingMessages.length} historical messages`);
         
-        // Remove loading indicator
-        const loadingIndicator = messagesContainer.querySelector('.loading-messages');
-        if (loadingIndicator) {
-            loadingIndicator.remove();
+        // Clear loading indicator
+        messagesContainer.innerHTML = '';
+        
+        // Process all pending messages
+        for (const item of pendingMessages) {
+            if (item.type === 'chat') {
+                addMessage(item.data);
+            } else if (item.type === 'system') {
+                addSystemMessage(item.data.text);
+            }
         }
         
-        // Set flag to allow incoming messages to be added normally
+        // Mark initial load as complete
         initialLoadComplete = true;
         
-        // Process any pending messages received during loading
-        if (pendingMessages.length > 0) {
-            console.log(`Processing ${pendingMessages.length} pending messages`);
-            
-            // Create document fragment for better performance
-            const fragment = document.createDocumentFragment();
-            
-            // Temporarily store references to track message grouping
-            const originalSender = lastMessageSender;
-            const originalTime = lastMessageTime;
-            const originalWrapper = lastMessageWrapper;
-            
-            // Process all pending messages
-            pendingMessages.forEach(item => {
-                if (item.type === 'chat') {
-                    // Create the message and append to the document fragment
-                    const messageElement = createMessageElement(item.data);
-                    if (messageElement) {
-                        fragment.appendChild(messageElement);
-                    }
-                } else if (item.type === 'system') {
-                    // Create system message
-                    const systemMessage = document.createElement('div');
-                    systemMessage.className = 'system-message';
-                    systemMessage.innerHTML = sanitizeWithEmoticons(item.data.text);
-                    fragment.appendChild(systemMessage);
-                }
-            });
-            
-            // Append the fragment to the messages container
-            messagesContainer.appendChild(fragment);
-            
-            // Restore original message tracking
-            lastMessageSender = originalSender;
-            lastMessageTime = originalTime;
-            lastMessageWrapper = originalWrapper;
-            
-            // Clear pending messages
-            pendingMessages = [];
-        }
+        // Clear the pending messages
+        pendingMessages = [];
         
-        // Scroll to bottom
+        // Scroll to bottom without animation
         scrollToBottom(false);
         
-        // Re-enable smooth scrolling after a short delay
-        setTimeout(() => {
-            messagesContainer.classList.remove('loading-messages-no-scroll');
-        }, 100);
+        console.log('Chat history loaded and displayed');
     });
 
     // Send message when button is clicked
@@ -862,6 +692,13 @@ document.addEventListener('DOMContentLoaded', function() {
         return true;
     }
 
+    // Function to check if a message is short (for styling)
+    function isShortMessage(text) {
+        if (!text) return true;
+        // Messages with 25 or fewer characters are considered "short"
+        return text.length <= 25 && !text.includes('\n');
+    }
+
     // Function to format message text for display
     function formatMessageText(text) {
         // Use the new function that preserves emoticons and handles line breaks
@@ -876,255 +713,278 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentSender = msg.username;
         const currentTime = msg.timestamp;
         const isOwnMessage = currentSender === username;
+        const messageText = msg.text || '';
         
-        // Create message container
-        const messageContainer = document.createElement('div');
-        messageContainer.className = 'message-container';
-        
-        // Check if message should be grouped with previous messages
-        const shouldGroup = shouldGroupMessages(currentSender, currentTime);
-        
-        if (!shouldGroup || !lastMessageWrapper) {
-            // Create new message wrapper for standalone or first in a series
-            const messageWrapper = document.createElement('div');
-            messageWrapper.className = isOwnMessage ? 'message-wrapper own' : 'message-wrapper';
-            
-            // Add profile picture if not our own message or not consecutive
-            if (!isOwnMessage) {
-                const profilePic = document.createElement('div');
-                profilePic.className = 'message-profile-pic';
-                
-                const profilePicLink = document.createElement('a');
-                profilePicLink.href = `/user/${msg.username}`;
-                profilePicLink.title = `View ${msg.displayName || msg.username}'s profile`;
-                
-                const profileImg = document.createElement('img');
-                profileImg.src = msg.profilePic || '/images/default-profile.png';
-                profileImg.alt = msg.displayName || msg.username;
-                profileImg.loading = 'lazy';
-                
-                profilePicLink.appendChild(profileImg);
-                profilePic.appendChild(profilePicLink);
-                messageWrapper.appendChild(profilePic);
-            }
-            
-            const messageContent = document.createElement('div');
-            messageContent.className = 'message-content';
-            
-            // Add header only for standalone messages
-            const header = document.createElement('div');
-            header.className = 'message-header';
-            
-            const sender = document.createElement('a');
-            sender.className = 'message-sender';
-            sender.textContent = isOwnMessage ? 'You' : (msg.displayName || msg.username);
-            sender.href = isOwnMessage ? '/profile' : `/user/${msg.username}`;
-            
-            const timestamp = document.createElement('span');
-            timestamp.className = 'message-time';
-            timestamp.textContent = formatTime(new Date(currentTime));
-            
-            if (isOwnMessage) {
-                header.style.flexDirection = 'row-reverse';
-                header.style.textAlign = 'right';
-                header.appendChild(timestamp);
-                header.appendChild(sender);
-            } else {
-                header.appendChild(sender);
-                header.appendChild(timestamp);
-            }
-            
-            messageContent.appendChild(header);
-            
-            // Create message bubble
-            const messageBubble = document.createElement('div');
-            messageBubble.className = 'message ' + (isOwnMessage ? 'message-own' : 'message-other');
-            messageBubble.dataset.messageId = msg._id || '';
-            
-            // Store reactions data for immediate UI updates
-            if (msg.reactions && msg.reactions.length > 0) {
-                messageBubble.dataset.reactions = JSON.stringify(msg.reactions);
-            }
-            
-            // Create message actions
-            const actionsDiv = createMessageActions(messageBubble, msg);
-            messageBubble.appendChild(actionsDiv);
-            
-            // Create message text container
-            const textSpan = document.createElement('span');
-            textSpan.className = 'message-text';
-            
-            // Add reply info if this is a reply
-            if (msg.replyTo && (msg.replyTo.messageId || msg.replyTo.id)) {
-                const replyToId = msg.replyTo.messageId || msg.replyTo.id;
-                
-                const replyInfo = document.createElement('div');
-                replyInfo.className = 'reply-info';
-                replyInfo.dataset.replyToId = replyToId;
-                
-                replyInfo.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    scrollToOriginalMessage(replyToId);
-                });
-                
-                const replyIcon = document.createElement('span');
-                replyIcon.className = 'reply-icon';
-                replyIcon.innerHTML = '↩ ';
-                replyIcon.style.color = '#f218d9';
-                replyIcon.style.marginRight = '4px';
-                replyIcon.style.fontWeight = 'bold';
-                replyInfo.appendChild(replyIcon);
-                
-                const replyUsername = document.createElement('span');
-                replyUsername.className = 'reply-username';
-                replyUsername.textContent = msg.replyTo.username || "Unknown user";
-                
-                const replyText = document.createElement('span');
-                replyText.className = 'reply-text';
-                replyText.textContent = msg.replyTo.text || 'Media message';
-                
-                replyInfo.appendChild(replyUsername);
-                replyInfo.appendChild(replyText);
-                textSpan.appendChild(replyInfo);
-                
-                messageBubble.dataset.isReply = "true";
-                messageBubble.classList.add('has-reply');
-            }
-            
-            // Add media if present
-            if (msg.media && typeof msg.media === 'object' && msg.media.url) {
-                const mediaElement = createMediaElement(msg.media);
-                if (mediaElement) {
-                    textSpan.appendChild(mediaElement);
-                }
-            }
-            
-            // Add message text if present
-            if (msg.text && msg.text.trim()) {
-                const textNode = document.createElement('span');
-                textNode.innerHTML = formatMessageText(msg.text);
-                textSpan.appendChild(textNode);
-            }
-            
-            // Add text span to message
-            messageBubble.appendChild(textSpan);
-            
-            // Add message time
-            const messageTime = document.createElement('div');
-            messageTime.className = 'message-time';
-            const formattedTime = formatTime(new Date(currentTime));
-            messageTime.textContent = formattedTime;
-            messageBubble.appendChild(messageTime);
-            
-            // Add reactions if present
-            if (msg.reactions && msg.reactions.length > 0) {
-                updateReactions(messageBubble, msg.reactions);
-            }
-            
-            messageContent.appendChild(messageBubble);
-            messageWrapper.appendChild(messageContent);
-            messageContainer.appendChild(messageWrapper);
-            
-            // Update last message tracking variables
-            lastMessageSender = currentSender;
-            lastMessageTime = currentTime;
-            lastMessageWrapper = messageWrapper;
-        } else {
-            // This is a consecutive message, append to existing wrapper
-            const messageBubble = document.createElement('div');
-            messageBubble.className = 'message ' + 
-                (isOwnMessage ? 'message-own' : 'message-other') + ' consecutive-message';
-            messageBubble.dataset.messageId = msg._id || '';
-            
-            // Add message actions
-            const actionsDiv = createMessageActions(messageBubble, msg);
-            messageBubble.appendChild(actionsDiv);
-            
-            // Create message text
-            const textSpan = document.createElement('span');
-            textSpan.className = 'message-text';
-            
-            // Add reply info if this is a reply
-            if (msg.replyTo && (msg.replyTo.messageId || msg.replyTo.id)) {
-                const replyToId = msg.replyTo.messageId || msg.replyTo.id;
-                
-                const replyInfo = document.createElement('div');
-                replyInfo.className = 'reply-info';
-                replyInfo.dataset.replyToId = replyToId;
-                
-                replyInfo.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    scrollToOriginalMessage(replyToId);
-                });
-                
-                const replyIcon = document.createElement('span');
-                replyIcon.className = 'reply-icon';
-                replyIcon.innerHTML = '↩ ';
-                replyIcon.style.color = '#f218d9';
-                replyIcon.style.marginRight = '4px';
-                replyIcon.style.fontWeight = 'bold';
-                replyInfo.appendChild(replyIcon);
-                
-                const replyUsername = document.createElement('span');
-                replyUsername.className = 'reply-username';
-                replyUsername.textContent = msg.replyTo.username || "Unknown user";
-                
-                const replyText = document.createElement('span');
-                replyText.className = 'reply-text';
-                replyText.textContent = msg.replyTo.text || 'Media message';
-                
-                replyInfo.appendChild(replyUsername);
-                replyInfo.appendChild(replyText);
-                textSpan.appendChild(replyInfo);
-                
-                messageBubble.dataset.isReply = "true";
-                messageBubble.classList.add('has-reply');
-            }
-            
-            // Add media if present
-            if (msg.media && typeof msg.media === 'object' && msg.media.url) {
-                const mediaElement = createMediaElement(msg.media);
-                if (mediaElement) {
-                    textSpan.appendChild(mediaElement);
-                }
-            }
-            
-            // Add message text if present
-            if (msg.text && msg.text.trim()) {
-                const textNode = document.createElement('span');
-                textNode.innerHTML = formatMessageText(msg.text);
-                textSpan.appendChild(textNode);
-            }
-            
-            // Add text span to message
-            messageBubble.appendChild(textSpan);
-            
-            // Add message time
-            const messageTime = document.createElement('div');
-            messageTime.className = 'message-time';
-            const formattedTime = formatTime(new Date(currentTime));
-            messageTime.textContent = formattedTime;
-            messageBubble.appendChild(messageTime);
-            
-            // Add reactions if present
-            if (msg.reactions && msg.reactions.length > 0) {
-                updateReactions(messageBubble, msg.reactions);
-            }
-            
-            // Find the message content in the last message wrapper
-            const messageContent = lastMessageWrapper.querySelector('.message-content');
-            messageContent.appendChild(messageBubble);
-            
-            // Update tracking variables
-            lastMessageTime = currentTime;
+        // Ensure message has a consistent ID
+        if (!msg._id && msg.id) {
+            msg._id = msg.id;
+        } else if (!msg.id && msg._id) {
+            msg.id = msg._id;
         }
         
-        // Add the container to the messages area
+        // Check if this message should be grouped with the previous one
+        if (shouldGroupMessages(currentSender, currentTime) && lastMessageWrapper) {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message ' + 
+                (isOwnMessage ? 'message-own' : 'message-other') + ' consecutive-message';
+            messageElement.dataset.messageId = msg._id || msg.id;
+            
+            // Check if message is short to apply special styling
+            if (isShortMessage(messageText)) {
+                messageElement.classList.add('short-message');
+            }
+            
+            // Create message actions if function exists
+            if (typeof createMessageActions === 'function') {
+                const actionsDiv = createMessageActions(messageElement, msg);
+                messageElement.appendChild(actionsDiv);
+            }
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'message-text';
+            
+            // Check if this is a reply message
+            if (msg.replyTo && (msg.replyTo.messageId || msg.replyTo.id)) {
+                const replyToId = msg.replyTo.messageId || msg.replyTo.id;
+                
+                const replyInfo = document.createElement('div');
+                replyInfo.className = 'reply-info';
+                replyInfo.dataset.replyToId = replyToId;
+                
+                // Add click event to scroll to original message
+                replyInfo.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Reply clicked, target ID:', replyToId);
+                    if (typeof scrollToOriginalMessage === 'function') {
+                        scrollToOriginalMessage(replyToId);
+                    }
+                });
+                
+                // Add a reply icon
+                const replyIcon = document.createElement('span');
+                replyIcon.className = 'reply-icon';
+                replyIcon.innerHTML = '↩ ';
+                replyIcon.style.color = '#f218d9';
+                replyIcon.style.marginRight = '4px';
+                replyIcon.style.fontWeight = 'bold';
+                replyInfo.appendChild(replyIcon);
+                
+                const replyUsername = document.createElement('span');
+                replyUsername.className = 'reply-username';
+                replyUsername.textContent = msg.replyTo.username || "Unknown user";
+                
+                const replyText = document.createElement('span');
+                replyText.className = 'reply-text';
+                replyText.textContent = msg.replyTo.text || 'Media message';
+                
+                replyInfo.appendChild(replyUsername);
+                replyInfo.appendChild(replyText);
+                textSpan.appendChild(replyInfo);
+                
+                messageElement.dataset.isReply = "true";
+                messageElement.classList.add('has-reply');
+            }
+            
+            // Handle media if present and valid
+            if (msg.media && typeof msg.media === 'object' && msg.media.url) {
+                const mediaElement = createMediaElement(msg.media);
+                if (mediaElement) {
+                    textSpan.appendChild(mediaElement);
+                }
+            }
+            
+            // Add text if present
+            if (msg.text && msg.text.trim()) {
+                const textNode = document.createElement('span');
+                textNode.innerHTML = formatMessageText(msg.text);
+                textSpan.appendChild(textNode);
+            }
+            
+            // Add timestamp
+            const timeElement = document.createElement('span');
+            timeElement.className = 'message-time';
+            timeElement.textContent = formatTime(new Date(currentTime));
+            textSpan.appendChild(timeElement);
+            
+            // Add text content
+            messageElement.appendChild(textSpan);
+            
+            // Add reactions if present
+            if (msg.reactions && msg.reactions.length > 0) {
+                if (typeof updateReactions === 'function') {
+                    updateReactions(messageElement, msg.reactions);
+                } else if (typeof window.updateReactions === 'function') {
+                    window.updateReactions(messageElement, msg.reactions);
+                }
+            }
+            
+            const messageContent = lastMessageWrapper.querySelector('.message-content');
+            messageContent.appendChild(messageElement);
+            
+            lastMessageTime = currentTime;
+            
+            // Only scroll if needed
+            if (!noScroll) {
+                scrollToBottom();
+            }
+            return;
+        }
+        
+        // Create new message container for non-consecutive messages
+        const messageContainer = document.createElement('div');
+        messageContainer.className = 'message-container';
+        messageContainer.dataset.username = currentSender;
+        
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = isOwnMessage ? 'message-wrapper own' : 'message-wrapper';
+        messageWrapper.dataset.messageId = msg._id || msg.id;
+        
+        const profilePic = document.createElement('div');
+        profilePic.className = 'message-profile-pic';
+        
+        const profilePicLink = document.createElement('a');
+        profilePicLink.href = isOwnMessage ? '/profile' : `/user/${currentSender}`;
+        profilePicLink.title = `View ${isOwnMessage ? 'your' : `${currentSender}'s`} profile`;
+        
+        const profileImg = document.createElement('img');
+        profileImg.src = isOwnMessage 
+            ? (document.getElementById('navProfilePic')?.src || '/images/default-profile.png') 
+            : (msg.profilePic || '/images/default-profile.png');
+        profileImg.alt = isOwnMessage ? 'You' : (msg.displayName || currentSender);
+        profileImg.loading = 'lazy';
+        
+        profilePicLink.appendChild(profileImg);
+        profilePic.appendChild(profilePicLink);
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        
+        const header = document.createElement('div');
+        header.className = 'message-header';
+        
+        const sender = document.createElement('a');
+        sender.className = 'message-sender';
+        sender.textContent = isOwnMessage ? 'You' : (msg.displayName || currentSender);
+        sender.href = isOwnMessage ? '/profile' : `/user/${currentSender}`;
+        sender.title = `View ${isOwnMessage ? 'your' : `${msg.displayName || currentSender}'s`} profile`;
+        
+        // Add timestamp in the header
+        let timestamp;
+        if (currentTime) {
+            timestamp = document.createElement('span');
+            timestamp.className = 'message-time';
+            timestamp.textContent = formatTime(new Date(currentTime));
+            header.appendChild(sender);
+            header.appendChild(timestamp);
+        } else {
+            header.appendChild(sender);
+        }
+        
+        messageContent.appendChild(header);
+        
+        // Create the first message in this container
+        const messageElement = document.createElement('div');
+        messageElement.className = 'message ' + (isOwnMessage ? 'message-own' : 'message-other');
+        messageElement.dataset.messageId = msg._id || msg.id;
+        
+        // Check if message is short
+        if (isShortMessage(messageText)) {
+            messageElement.classList.add('short-message');
+        }
+        
+        // Create message actions if function exists
+        if (typeof createMessageActions === 'function') {
+            const actionsDiv = createMessageActions(messageElement, msg);
+            messageElement.appendChild(actionsDiv);
+        }
+        
+        const textSpan = document.createElement('span');
+        textSpan.className = 'message-text';
+        
+        // Handle reply
+        if (msg.replyTo && (msg.replyTo.messageId || msg.replyTo.id)) {
+            const replyToId = msg.replyTo.messageId || msg.replyTo.id;
+            
+            const replyInfo = document.createElement('div');
+            replyInfo.className = 'reply-info';
+            replyInfo.dataset.replyToId = replyToId;
+            
+            // Add click event to scroll to original message
+            replyInfo.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Reply clicked, target ID:', replyToId);
+                if (typeof scrollToOriginalMessage === 'function') {
+                    scrollToOriginalMessage(replyToId);
+                }
+            });
+            
+            // Add a reply icon
+            const replyIcon = document.createElement('span');
+            replyIcon.className = 'reply-icon';
+            replyIcon.innerHTML = '↩ ';
+            replyIcon.style.color = '#f218d9';
+            replyIcon.style.marginRight = '4px';
+            replyIcon.style.fontWeight = 'bold';
+            replyInfo.appendChild(replyIcon);
+            
+            const replyUsername = document.createElement('span');
+            replyUsername.className = 'reply-username';
+            replyUsername.textContent = msg.replyTo.username || "Unknown user";
+            
+            const replyText = document.createElement('span');
+            replyText.className = 'reply-text';
+            replyText.textContent = msg.replyTo.text || 'Media message';
+            
+            replyInfo.appendChild(replyUsername);
+            replyInfo.appendChild(replyText);
+            textSpan.appendChild(replyInfo);
+            
+            messageElement.dataset.isReply = "true";
+            messageElement.classList.add('has-reply');
+        }
+        
+        // Handle media
+        if (msg.media && typeof msg.media === 'object' && msg.media.url) {
+            const mediaElement = createMediaElement(msg.media);
+            if (mediaElement) {
+                textSpan.appendChild(mediaElement);
+            }
+        }
+        
+        // Add text content
+        if (msg.text && msg.text.trim()) {
+            const textNode = document.createElement('span');
+            textNode.innerHTML = formatMessageText(msg.text);
+            textSpan.appendChild(textNode);
+        }
+        
+        messageElement.appendChild(textSpan);
+        
+        // Add reactions if present
+        if (msg.reactions && msg.reactions.length > 0) {
+            if (typeof updateReactions === 'function') {
+                updateReactions(messageElement, msg.reactions);
+            } else if (typeof window.updateReactions === 'function') {
+                window.updateReactions(messageElement, msg.reactions);
+            }
+        }
+        
+        messageContent.appendChild(messageElement);
+        
+        messageWrapper.appendChild(profilePic);
+        messageWrapper.appendChild(messageContent);
+        messageContainer.appendChild(messageWrapper);
+        
         messagesContainer.appendChild(messageContainer);
         
-        // Scroll to the bottom if needed
+        // Update for grouping
+        lastMessageSender = currentSender;
+        lastMessageTime = currentTime;
+        lastMessageWrapper = messageWrapper;
+        
+        // Only scroll if needed
         if (!noScroll) {
             scrollToBottom();
         }
@@ -1610,6 +1470,60 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Ensure the reaction menu exists
+        if (!reactionMenu || !document.body.contains(reactionMenu)) {
+            console.error('Reaction menu element not found or not in document. Creating it now.');
+            // Create the menu element if it doesn't exist
+            const newReactionMenu = document.createElement('div');
+            newReactionMenu.className = 'reaction-menu';
+            newReactionMenu.innerHTML = `
+                <div class="reaction-emoji-list">
+                    <span class="reaction-emoji" data-emoji="👍">👍</span>
+                    <span class="reaction-emoji" data-emoji="❤️">❤️</span>
+                    <span class="reaction-emoji" data-emoji="😂">😂</span>
+                    <span class="reaction-emoji" data-emoji="😮">😮</span>
+                    <span class="reaction-emoji" data-emoji="😢">😢</span>
+                    <span class="reaction-emoji" data-emoji="👏">👏</span>
+                    <span class="reaction-emoji" data-emoji="🔥">🔥</span>
+                    <span class="reaction-emoji" data-emoji="🙏">🙏</span>
+                </div>
+            `;
+            document.body.appendChild(newReactionMenu);
+            
+            // Add event listeners to reaction emojis
+            newReactionMenu.querySelectorAll('.reaction-emoji').forEach(emoji => {
+                emoji.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const menuMessageId = newReactionMenu.dataset.messageId;
+                    
+                    // Verify messageId is not undefined
+                    if (!menuMessageId) {
+                        console.error("Cannot send reaction: missing messageId");
+                        if (typeof notifications !== 'undefined') {
+                            notifications.error('Error', 'Cannot react to this message');
+                        }
+                        closeReactionMenu();
+                        return;
+                    }
+                    
+                    console.log("Sending reaction for message ID:", menuMessageId);
+                    const emojiValue = this.dataset.emoji;
+                    
+                    // Send the reaction to the server
+                    socket.emit('message reaction', {
+                        messageId: menuMessageId,
+                        emoji: emojiValue
+                    });
+                    
+                    // Close the menu
+                    closeReactionMenu();
+                });
+            });
+            
+            // Update the reactionMenu reference
+            reactionMenu = newReactionMenu;
+        }
+        
         // Get the message element itself for better positioning
         const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
         if (!messageElement) {
@@ -1673,93 +1587,187 @@ document.addEventListener('DOMContentLoaded', function() {
         document.removeEventListener('click', closeReactionMenu);
     }
     
-    // Function to update reactions display on a message
+    // Function to create or update reaction badges for a message
     function updateReactions(messageElement, reactions) {
-        if (!messageElement || !reactions) return;
-        
-        // Find existing reactions container or create one
+        // Find or create the reactions container
         let reactionsContainer = messageElement.querySelector('.message-reactions');
-        if (!reactionsContainer) {
-            reactionsContainer = document.createElement('div');
-            reactionsContainer.className = 'message-reactions';
-            messageElement.appendChild(reactionsContainer);
-        } else {
-            // Clear existing reactions
-            reactionsContainer.innerHTML = '';
+        
+        // If no reactions, remove the container if it exists and return
+        if (!reactions || reactions.length === 0) {
+            if (reactionsContainer) {
+                reactionsContainer.remove();
+            }
+            return;
         }
         
-        // Skip if there are no reactions
-        if (!reactions.length) {
-            reactionsContainer.style.display = 'none';
-            return;
-        } else {
-            reactionsContainer.style.display = 'block';
+        // Create a new reactions container if it doesn't exist or recreate it to ensure correct positioning
+        if (reactionsContainer) {
+            reactionsContainer.remove();
         }
+        
+        // Create fresh reactions container
+        reactionsContainer = document.createElement('div');
+        reactionsContainer.className = 'message-reactions';
         
         // Group reactions by emoji
         const emojiCounts = {};
         reactions.forEach(reaction => {
-            const emoji = reaction.emoji;
-            if (!emojiCounts[emoji]) {
-                emojiCounts[emoji] = {
+            if (!emojiCounts[reaction.emoji]) {
+                emojiCounts[reaction.emoji] = {
                     count: 0,
                     usernames: [],
                     userReacted: false
                 };
             }
-            emojiCounts[emoji].count++;
+            emojiCounts[reaction.emoji].count++;
             
             const reactionUser = reaction.username || reaction.sender || 'Unknown';
-            emojiCounts[emoji].usernames.push(reactionUser);
+            emojiCounts[reaction.emoji].usernames.push(reactionUser);
             
             // Check if current user reacted
             if (reactionUser === username) {
-                emojiCounts[emoji].userReacted = true;
+                emojiCounts[reaction.emoji].userReacted = true;
             }
         });
         
-        // Create badge for each emoji
+        // Create badge for each emoji reaction
         for (const emoji in emojiCounts) {
             const badge = document.createElement('span');
             badge.className = 'reaction-badge';
-            
             if (emojiCounts[emoji].userReacted) {
                 badge.classList.add('user-reacted');
             }
             
+            // Set title with usernames who reacted
+            const usersList = emojiCounts[emoji].usernames.map(name => 
+                name === username ? 'You' : name
+            ).join(', ');
+            badge.title = `${usersList} reacted with ${emoji}`;
+            
             // Add emoji and count
-            badge.innerHTML = `${emoji} <span class="reaction-count">${emojiCounts[emoji].count}</span>`;
+            badge.innerHTML = `
+                ${emoji} <span class="reaction-count">${emojiCounts[emoji].count}</span>
+            `;
             
-            // Add tooltip showing who reacted
-            const userList = emojiCounts[emoji].usernames.join(', ');
-            badge.title = userList;
-            
-            // Add click listener to toggle this reaction
-            badge.addEventListener('click', (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                handleReactionClick(messageElement.dataset.messageId, emoji);
+            // Add click handler to toggle reaction
+            badge.addEventListener('click', function() {
+                socket.emit('message reaction', {
+                    messageId: messageElement.dataset.messageId,
+                    emoji: emoji
+                });
             });
             
             reactionsContainer.appendChild(badge);
         }
-    }
-
-    // Function to handle reaction click
-    function handleReactionClick(messageId, emoji) {
-        if (!messageId || !emoji) {
-            console.error('Missing message ID or emoji for reaction');
-            return;
+        
+        // Position the reactions container after the message text but before the timestamp
+        const messageText = messageElement.querySelector('.message-text');
+        const timestamp = messageElement.querySelector('.message-time');
+        
+        // Ensure correct DOM ordering for flexbox to work
+        if (messageText && messageText.nextSibling) {
+            // If there's a sibling after message text, insert before it
+            messageElement.insertBefore(reactionsContainer, messageText.nextSibling);
+        } else if (timestamp) {
+            // If there's a timestamp, insert before it
+            messageElement.insertBefore(reactionsContainer, timestamp);
+        } else {
+            // If neither conditions apply, just append at the end
+            messageElement.appendChild(reactionsContainer);
         }
-        
-        console.log('Sending reaction:', { messageId, emoji });
-        
-        // Send the reaction to the server
-        socket.emit('message reaction', {
-            messageId,
-            emoji
-        });
     }
+    
+    // Socket.io event handlers
+    socket.on('message reaction update', function(data) {
+        // Add a small delay to ensure DOM is ready
+        setTimeout(() => {
+            // Find the message element
+            const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
+            if (messageElement) {
+                // Update reactions
+                updateReactions(messageElement, data.reactions);
+            } else {
+                console.error('Message element not found for reaction update:', data.messageId);
+                
+                // Debug: log available message elements
+                const elements = document.querySelectorAll('[data-message-id]');
+                console.log(`Found ${elements.length} elements with data-message-id, looking for ${data.messageId}`);
+            }
+        }, 50); // Small delay for DOM to be ready
+    });
+
+    // Add event listeners to reaction emojis
+    reactionMenu.querySelectorAll('.reaction-emoji').forEach(emoji => {
+        emoji.addEventListener('click', function() {
+            const messageId = reactionMenu.dataset.messageId;
+            
+            // Verify messageId is not undefined
+            if (!messageId) {
+                console.error("Cannot send reaction: messageId is undefined");
+                if (typeof notifications !== 'undefined') {
+                    notifications.error('Error', 'Cannot react to this message');
+                }
+                closeReactionMenu();
+                return;
+            }
+            
+            console.log("Sending reaction for message ID:", messageId);
+            const emojiValue = this.dataset.emoji;
+            
+            // Find the message element for immediate UI update
+            const messageElement = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            
+            if (messageElement) {
+                // Get current reactions from the element's dataset
+                let currentReactions = [];
+                if (messageElement.dataset.reactions) {
+                    try {
+                        currentReactions = JSON.parse(messageElement.dataset.reactions);
+                    } catch (e) {
+                        console.error("Error parsing existing reactions:", e);
+                        currentReactions = [];
+                    }
+                }
+                
+                // Toggle the reaction (add if not exists, remove if exists)
+                const existingIndex = currentReactions.findIndex(r => 
+                    r.emoji === emojiValue && r.username === username
+                );
+                
+                if (existingIndex >= 0) {
+                    // Remove existing reaction
+                    currentReactions.splice(existingIndex, 1);
+                } else {
+                    // Add new reaction
+                    currentReactions.push({
+                        emoji: emojiValue,
+                        username: username,
+                        timestamp: new Date()
+                    });
+                }
+                
+                // Update the dataset with modified reactions
+                messageElement.dataset.reactions = JSON.stringify(currentReactions);
+                
+                // Update message structure to ensure proper order
+                // 1. Get the message text and timestamp
+                const messageText = messageElement.querySelector('.message-text');
+                const timestamp = messageElement.querySelector('.message-time');
+                
+                // 2. Ensure proper DOM structure: text -> reactions -> timestamp
+                updateReactions(messageElement, currentReactions);
+            }
+            
+            // Send the reaction to the server
+            socket.emit('message reaction', {
+                messageId: messageId,
+                emoji: emojiValue
+            });
+            
+            // Close the menu
+            closeReactionMenu();
+        });
+    });
 
     // Function to scroll to original message that was replied to
     function scrollToOriginalMessage(messageId) {
@@ -1802,261 +1810,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Remove highlight after animation completes
         setTimeout(() => {
             originalMessageElement.classList.remove('highlight-message');
-        }, 3000); // Increased duration to 3s to match the 3 pulses
-    }
-
-    // Function to create a message element without adding it to the DOM
-    function createMessageElement(msg) {
-        const currentSender = msg.username;
-        const currentTime = msg.timestamp;
-        const isOwnMessage = currentSender === username;
-        
-        // Create message container
-        const messageContainer = document.createElement('div');
-        messageContainer.className = 'message-container';
-        
-        // Check if message should be grouped with previous messages
-        const shouldGroup = shouldGroupMessages(currentSender, currentTime);
-        
-        if (!shouldGroup || !lastMessageWrapper) {
-            // Create new message wrapper for standalone or first in a series
-            const messageWrapper = document.createElement('div');
-            messageWrapper.className = isOwnMessage ? 'message-wrapper own' : 'message-wrapper';
-            
-            // Add profile picture if not our own message or not consecutive
-            if (!isOwnMessage) {
-                const profilePic = document.createElement('div');
-                profilePic.className = 'message-profile-pic';
-                
-                const profilePicLink = document.createElement('a');
-                profilePicLink.href = `/user/${msg.username}`;
-                profilePicLink.title = `View ${msg.displayName || msg.username}'s profile`;
-                
-                const profileImg = document.createElement('img');
-                profileImg.src = msg.profilePic || '/images/default-profile.png';
-                profileImg.alt = msg.displayName || msg.username;
-                profileImg.loading = 'lazy';
-                
-                profilePicLink.appendChild(profileImg);
-                profilePic.appendChild(profilePicLink);
-                messageWrapper.appendChild(profilePic);
-            }
-            
-            const messageContent = document.createElement('div');
-            messageContent.className = 'message-content';
-            
-            // Add header only for standalone messages
-            const header = document.createElement('div');
-            header.className = 'message-header';
-            
-            const sender = document.createElement('a');
-            sender.className = 'message-sender';
-            sender.textContent = isOwnMessage ? 'You' : (msg.displayName || msg.username);
-            sender.href = isOwnMessage ? '/profile' : `/user/${msg.username}`;
-            
-            const timestamp = document.createElement('span');
-            timestamp.className = 'message-time';
-            timestamp.textContent = formatTime(new Date(currentTime));
-            
-            if (isOwnMessage) {
-                header.style.flexDirection = 'row-reverse';
-                header.style.textAlign = 'right';
-                header.appendChild(timestamp);
-                header.appendChild(sender);
-            } else {
-                header.appendChild(sender);
-                header.appendChild(timestamp);
-            }
-            
-            messageContent.appendChild(header);
-            
-            // Create message bubble
-            const messageBubble = document.createElement('div');
-            messageBubble.className = 'message ' + (isOwnMessage ? 'message-own' : 'message-other');
-            messageBubble.dataset.messageId = msg._id || '';
-            
-            // Store reactions data for immediate UI updates
-            if (msg.reactions && msg.reactions.length > 0) {
-                messageBubble.dataset.reactions = JSON.stringify(msg.reactions);
-            }
-            
-            // Create message actions
-            const actionsDiv = createMessageActions(messageBubble, msg);
-            messageBubble.appendChild(actionsDiv);
-            
-            // Create message text container
-            const textSpan = document.createElement('span');
-            textSpan.className = 'message-text';
-            
-            // Add reply info if this is a reply
-            if (msg.replyTo && (msg.replyTo.messageId || msg.replyTo.id)) {
-                const replyToId = msg.replyTo.messageId || msg.replyTo.id;
-                
-                const replyInfo = document.createElement('div');
-                replyInfo.className = 'reply-info';
-                replyInfo.dataset.replyToId = replyToId;
-                replyInfo.style.cursor = 'pointer'; // Added to show it's clickable
-                
-                // Make the entire reply info clickable
-                replyInfo.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    scrollToOriginalMessage(replyToId);
-                });
-                
-                const replyIcon = document.createElement('span');
-                replyIcon.className = 'reply-icon';
-                replyIcon.innerHTML = '↩ ';
-                replyIcon.style.color = '#f218d9';
-                replyIcon.style.marginRight = '4px';
-                replyIcon.style.fontWeight = 'bold';
-                replyInfo.appendChild(replyIcon);
-                
-                const replyUsername = document.createElement('span');
-                replyUsername.className = 'reply-username';
-                replyUsername.textContent = msg.replyTo.username || "Unknown user";
-                
-                const replyText = document.createElement('span');
-                replyText.className = 'reply-text';
-                replyText.textContent = msg.replyTo.text || 'Media message';
-                
-                replyInfo.appendChild(replyUsername);
-                replyInfo.appendChild(replyText);
-                textSpan.appendChild(replyInfo);
-                
-                messageBubble.dataset.isReply = "true";
-                messageBubble.classList.add('has-reply');
-            }
-            
-            // Add media if present
-            if (msg.media && typeof msg.media === 'object' && msg.media.url) {
-                const mediaElement = createMediaElement(msg.media);
-                if (mediaElement) {
-                    textSpan.appendChild(mediaElement);
-                }
-            }
-            
-            // Add message text if present
-            if (msg.text && msg.text.trim()) {
-                const textNode = document.createElement('span');
-                textNode.innerHTML = formatMessageText(msg.text);
-                textSpan.appendChild(textNode);
-            }
-            
-            // Add text span to message
-            messageBubble.appendChild(textSpan);
-            
-            // Add message time
-            const messageTime = document.createElement('div');
-            messageTime.className = 'message-time';
-            const formattedTime = formatTime(new Date(currentTime));
-            messageTime.textContent = formattedTime;
-            messageBubble.appendChild(messageTime);
-            
-            // Add reactions if present
-            if (msg.reactions && msg.reactions.length > 0) {
-                updateReactions(messageBubble, msg.reactions);
-            }
-            
-            messageContent.appendChild(messageBubble);
-            messageWrapper.appendChild(messageContent);
-            messageContainer.appendChild(messageWrapper);
-            
-            // Update last message tracking variables
-            lastMessageSender = currentSender;
-            lastMessageTime = currentTime;
-            lastMessageWrapper = messageWrapper;
-        } else {
-            // This is a consecutive message, append to existing wrapper
-            const messageBubble = document.createElement('div');
-            messageBubble.className = 'message ' + 
-                (isOwnMessage ? 'message-own' : 'message-other') + ' consecutive-message';
-            messageBubble.dataset.messageId = msg._id || '';
-            
-            // Add message actions
-            const actionsDiv = createMessageActions(messageBubble, msg);
-            messageBubble.appendChild(actionsDiv);
-            
-            // Create message text
-            const textSpan = document.createElement('span');
-            textSpan.className = 'message-text';
-            
-            // Add reply info if this is a reply
-            if (msg.replyTo && (msg.replyTo.messageId || msg.replyTo.id)) {
-                const replyToId = msg.replyTo.messageId || msg.replyTo.id;
-                
-                const replyInfo = document.createElement('div');
-                replyInfo.className = 'reply-info';
-                replyInfo.dataset.replyToId = replyToId;
-                
-                replyInfo.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    scrollToOriginalMessage(replyToId);
-                });
-                
-                const replyIcon = document.createElement('span');
-                replyIcon.className = 'reply-icon';
-                replyIcon.innerHTML = '↩ ';
-                replyIcon.style.color = '#f218d9';
-                replyIcon.style.marginRight = '4px';
-                replyIcon.style.fontWeight = 'bold';
-                replyInfo.appendChild(replyIcon);
-                
-                const replyUsername = document.createElement('span');
-                replyUsername.className = 'reply-username';
-                replyUsername.textContent = msg.replyTo.username || "Unknown user";
-                
-                const replyText = document.createElement('span');
-                replyText.className = 'reply-text';
-                replyText.textContent = msg.replyTo.text || 'Media message';
-                
-                replyInfo.appendChild(replyUsername);
-                replyInfo.appendChild(replyText);
-                textSpan.appendChild(replyInfo);
-                
-                messageBubble.dataset.isReply = "true";
-                messageBubble.classList.add('has-reply');
-            }
-            
-            // Add media if present
-            if (msg.media && typeof msg.media === 'object' && msg.media.url) {
-                const mediaElement = createMediaElement(msg.media);
-                if (mediaElement) {
-                    textSpan.appendChild(mediaElement);
-                }
-            }
-            
-            // Add message text if present
-            if (msg.text && msg.text.trim()) {
-                const textNode = document.createElement('span');
-                textNode.innerHTML = formatMessageText(msg.text);
-                textSpan.appendChild(textNode);
-            }
-            
-            // Add text span to message
-            messageBubble.appendChild(textSpan);
-            
-            // Add message time
-            const messageTime = document.createElement('div');
-            messageTime.className = 'message-time';
-            const formattedTime = formatTime(new Date(currentTime));
-            messageTime.textContent = formattedTime;
-            messageBubble.appendChild(messageTime);
-            
-            // Add reactions if present
-            if (msg.reactions && msg.reactions.length > 0) {
-                updateReactions(messageBubble, msg.reactions);
-            }
-            
-            // Find the message content in the last message wrapper
-            const messageContent = lastMessageWrapper.querySelector('.message-content');
-            messageContent.appendChild(messageBubble);
-            
-            // Update tracking variables
-            lastMessageTime = currentTime;
-        }
-        
-        return messageContainer;
+        }, 2000);
     }
 }); 

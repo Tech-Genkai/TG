@@ -462,14 +462,37 @@
 
 /* Regular message styling */
 .message {
-    padding: 10px 12px;
-    border-radius: 5px;
-    display: inline-block;
-    max-width: 70% !important;
-    box-sizing: border-box;
-    word-wrap: break-word;
-    margin-bottom: 2px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    padding: 8px 10px;
+    border-radius: 18px;
+    margin-bottom: 8px;
+    max-width: 70%;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.message .message-text {
+    width: 100%;
+    order: 1;
+}
+
+.message .message-reactions {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 4px;
+    order: 2;
+}
+
+.message .message-time {
+    display: block;
+    text-align: right;
+    margin-top: 4px;
+    font-size: 0.7em;
+    color: rgba(255, 255, 255, 0.5);
+    order: 3;
 }
 
 /* Hide message bubble for media messages */
@@ -482,14 +505,14 @@
 }
 
 .message-other {
-    background-color: rgba(35, 35, 45, 0.7);
+    background-color: #1a1a1a;
     color: #fff;
     border-radius: 5px;
     border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .message-own {
-    background-color: rgba(45, 45, 55, 0.8);
+    background-color: #1a1a1a;
     color: white;
     border-radius: 5px;
     float: right;
@@ -508,6 +531,89 @@
 
 .message-other.consecutive-message {
     border-radius: 5px !important;
+}
+
+/* Message bubble styles for the newer private-messages.js format */
+.message-bubble {
+    position: relative;
+    padding: 8px 10px;
+    border-radius: 18px;
+    margin-bottom: 8px;
+    max-width: 80%;
+    background-color: #1a1a1a;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.message-text {
+    width: 100%;
+    order: 1;
+}
+
+.message-reactions {
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 4px;
+    order: 2;
+}
+
+.message-time {
+    display: block;
+    text-align: right;
+    margin-top: 4px;
+    font-size: 0.7em;
+    color: rgba(255, 255, 255, 0.5);
+    order: 3;
+}
+
+.message-bubble.own, 
+.message-bubble.other {
+    background-color: #1a1a1a;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Reaction styles */
+.reaction-badge {
+    display: inline-flex;
+    align-items: center;
+    background-color: rgba(50, 50, 50, 0.8);
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid rgba(100, 100, 120, 0.3);
+    margin-right: 4px;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    z-index: 5; /* Ensure reactions are above other elements */
+}
+
+.reaction-badge .reaction-count {
+    font-size: 8px;
+    margin-left: 2px;
+    color: #ccc;
+}
+
+.reaction-badge:hover {
+    background-color: rgba(80, 80, 80, 0.9);
+    border-color: rgba(242, 24, 217, 0.4);
+    transform: scale(1.05);
+}
+
+.reaction-badge.user-reacted {
+    background-color: rgba(242, 24, 217, 0.15);
+    border-color: rgba(242, 24, 217, 0.3);
+}
+
+.reaction-badge.user-reacted:hover {
+    background-color: rgba(242, 24, 217, 0.25);
+    border-color: rgba(242, 24, 217, 0.5);
 }
 
 /* Chat input styling */
@@ -1200,4 +1306,52 @@
     width: 400px;
     height: 450px;
     display: none;
+}
+
+/* Make sure reactions appear below short messages */
+.short-message .message-reactions {
+    clear: both;
+    margin-top: 4px;
+    width: 100%;
+    display: block;
+}
+
+/* Ensure message text has proper spacing and wrapping */
+.message-text {
+    display: block;
+    width: 100%;
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* Ensure reactions display properly - with !important flags */
+.message-bubble,
+.message {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    position: relative !important;
+}
+
+.message-text {
+    width: 100% !important;
+    order: 1 !important;
+    align-self: flex-start !important;
+}
+
+.message-reactions {
+    width: 100% !important;
+    margin-top: 8px !important;
+    padding-top: 4px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    margin-bottom: 4px !important;
+    order: 2 !important;
+    align-self: flex-start !important;
+    display: block !important;
+}
+
+.message-time {
+    order: 3 !important;
+    align-self: flex-end !important;
+    display: block !important;
 } 
